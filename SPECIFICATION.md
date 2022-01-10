@@ -64,6 +64,8 @@ Additionally the semantics of calls may be modified by additional qualification 
 ### Storage Declaration
 The [Cíonom grammar specification](#Cíonom-Grammar-Specification) only allows for storage and alignment specifiers, with storage specifiers being mandatory. However a conformant implementation may provide any number of additional [nonstandard-specifiers](#Nonstandard-Specifiers). Additionally the [Cíonom grammar specification](#Cíonom-Grammar-Specification) states that a storage declaration is terminated by an identifier followed by `;`, however a conformant implementation is permitted to allow additional instruction beyond the identifer and before the `;` such as the provision of [initializer expressions](#Initializer-Expressions).
 
+A storage declaration without an alignment specifier is taken to have an alignment of 1.
+
 Storage is only valid within the routine it is declared - access outside of its enclosing routine after the routine's runtime has expired is undefined.
 
 ### Storage Specifier
