@@ -1,7 +1,7 @@
 puts storage<8> alignment<8> str;
 
 main storage<4> alignment<4> argc, storage<8> alignment<8> argv {
-    puts argv;
+    puts "test";
     storage<8> alignment<8> i;
     storage<i> j;
     return;
