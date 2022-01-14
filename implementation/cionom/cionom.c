@@ -3,154 +3,22 @@
 
 #include "include/cionom.h"
 
-#include <genstring.h>
+gen_error_t cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source) {
+	GEN_FRAME_BEGIN(cio_line_from_offset);
 
-#if 0
-#define set_token_len token->length = offset - token->offset
-#define eof \
-	do { \
-		error = grealloc((void**) out_tokens, ++*out_n_tokens, sizeof(cio_token_t)); \
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed"); \
-		cio_token_t* const eof_token = &(*out_tokens)[*out_n_tokens - 1]; \
-		eof_token->type = CIO_TOKEN_EOF; \
-		eof_token->offset = offset; \
-		eof_token->length = 0; \
-		GEN_ALL_OK; \
-	} while(0)
-#define terminate_if_eof(statement) \
-	do { \
-		if(!ADVANCE) { \
-			statement; \
-			set_token_len; \
-			eof; \
-		} \
-	} while(0)
-#define is_keyword(s) \
-	({ \
-		bool result = false; \
-		error = gen_string_compare(source + token->offset + 1, source_len - token->offset, s, sizeof(s), token->length, &result); \
-		GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed"); \
-		result; \
-	})
+	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(out_line);
 
-#define set_if_keyword(s, t) \
-	if(is_keyword(s)) token->type = t
-#define check_keywords \
-	do { \
-		set_token_len; \
-		set_if_keyword("return", CIO_TOKEN_RETURN); \
-		set_if_keyword("storage", CIO_TOKEN_STORAGE); \
-		set_if_keyword("alignment", CIO_TOKEN_ALIGNMENT); \
-	} while(0)
-#endif
-
-#define ADVANCE (c = source[++offset])
-#define IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n')
-#define IS_NUMBER (c > '0' && c < '9')
-#define CHARACTER_TOKEN(t) \
-	do { \
-		token->type = t; \
-		token->length = 1; \
-	} while(0); \
-	goto next_character
-
-static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const restrict token, const char* const restrict source, const size_t source_len) {
-	GEN_FRAME_BEGIN(cio_internal_set_sequence_type);
-
-	bool result = false;
-	gen_error_t error = GEN_OK;
-
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "return", sizeof("return"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_RETURN;
-		GEN_ALL_OK;
-	}
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "storage", sizeof("storage"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_STORAGE;
-		GEN_ALL_OK;
-	}
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "alignment", sizeof("alignment"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_ALIGNMENT;
-		GEN_ALL_OK;
-	}
-
-	token->type = CIO_TOKEN_IDENTIFIER;
+	*out_line = offset;
 	GEN_ALL_OK;
 }
 
-gen_error_t cio_tokenize(const char* const restrict source, cio_token_t** const restrict out_tokens, size_t* const restrict out_n_tokens) {
-	GEN_FRAME_BEGIN(cio_tokenize);
+gen_error_t cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source) {
+	GEN_FRAME_BEGIN(cio_column_from_offset);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_tokens);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_n_tokens);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(out_column);
 
-	*out_tokens = NULL;
-	*out_n_tokens = 0;
-
-	gen_error_t error = GEN_OK;
-
-	size_t source_len = 0;
-	error = gen_string_length(source, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &source_len);
-	GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
-
-	size_t offset = 0;
-	char c = 0;
-
-	do {
-		if(IS_WHITESPACE) goto next_character;
-
-		error = grealloc((void**) out_tokens, ++*out_n_tokens, sizeof(cio_token_t));
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-		cio_token_t* const token = &(*out_tokens)[*out_n_tokens - 1];
-		token->offset = offset;
-
-		switch(c) {
-			case '{': CHARACTER_TOKEN(CIO_TOKEN_BLOCK_START);
-			case '}': CHARACTER_TOKEN(CIO_TOKEN_BLOCK_END);
-			case '<': CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_START);
-			case '>': CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_END);
-			case ';': CHARACTER_TOKEN(CIO_TOKEN_STATEMENT_DELIMITER);
-			case ',': CHARACTER_TOKEN(CIO_TOKEN_PARAMETER_DELIMITER);
-			case '"': {
-				token->type = CIO_TOKEN_STRING;
-				while(ADVANCE != '"') {
-					token->length = offset - token->offset;
-				}
-				goto next_character;
-			}
-			default: {
-				if(IS_NUMBER) {
-					token->type = CIO_TOKEN_NUMBER;
-					do {
-						token->length = offset - token->offset;
-						ADVANCE;
-					} while(IS_NUMBER);
-					goto current_character;
-				}
-				else {
-					while(true) {
-						token->length = offset - token->offset;
-						if(IS_WHITESPACE || c == '{' || c == '}' || c == '<' || c == '>' || c == ';' || c == ',') {
-							error = cio_internal_set_sequence_type(token, source, source_len);
-							GEN_ERROR_OUT_IF(error, "`cio_internal_set_sequence_type` failed");
-							goto current_character;
-						}
-						ADVANCE;
-					}
-				}
-			}
-		}
-	next_character:
-		ADVANCE;
-	current_character:
-		continue;
-	} while(c);
-
+	*out_column = offset;
 	GEN_ALL_OK;
 }

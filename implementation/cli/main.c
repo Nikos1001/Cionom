@@ -126,4 +126,8 @@ int main(const int argc, const char* const* const argv) {
 			}
 		}
 	}
+
+	cio_program_t program = {0};
+	error = cio_parse(tokens, n_tokens, source, args.file, &program);
+	GEN_REQUIRE_NO_ERROR(error);
 }
