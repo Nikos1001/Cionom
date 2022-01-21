@@ -2,9 +2,10 @@
 // Copyright (C) 2021 TTG <prs.ttg+genstone@pm.me>
 
 #include <gencommon.h>
+#include <genstring.h>
 
-GEN_ERRORABLE cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source);
-GEN_ERRORABLE cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source);
+GEN_ERRORABLE cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length);
+GEN_ERRORABLE cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length);
 
 typedef struct {
     enum {
@@ -30,7 +31,7 @@ typedef struct {
     size_t length;
 } cio_token_t;
 
-GEN_ERRORABLE cio_tokenize(const char* const restrict source, cio_token_t** const restrict out_tokens, size_t* const restrict out_n_tokens);
+GEN_ERRORABLE cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length);
 
 typedef struct cio_expression cio_expression_t;
 typedef struct cio_storage cio_storage_t;
@@ -67,7 +68,7 @@ struct cio_storage {
 
 struct cio_call {
     struct cio_routine* routine;
-    size_t n_parameters;
+    size_t parameters_length;
     cio_expression_t* parameters;
 };
 
@@ -85,15 +86,15 @@ struct cio_statement {
 
 struct cio_routine {
     char* identifier;
-    size_t n_parameters;
+    size_t parameters_length;
     cio_storage_t* parameters;
-    size_t n_statements;
+    size_t statements_length;
     cio_statement_t* statements;
 };
 
 struct cio_program {
-    size_t n_routines;
+    size_t routines_length;
     cio_routine_t* routines;
 };
 
-GEN_ERRORABLE cio_parse(const cio_token_t* const restrict tokens, const size_t n_tokens, const char* const restrict source, const char* const restrict source_file, cio_program_t* const restrict out_program);
+GEN_ERRORABLE cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);

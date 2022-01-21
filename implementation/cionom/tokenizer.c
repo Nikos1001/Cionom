@@ -3,8 +3,6 @@
 
 #include "include/cionom.h"
 
-#include <genstring.h>
-
 #define ADVANCE (c = source[++offset])
 #define IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n')
 #define IS_NUMBER (c > '0' && c < '9')
@@ -15,7 +13,7 @@
 	} while(0); \
 	goto next_character
 
-static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const restrict token, const char* const restrict source, const size_t source_len) {
+static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const restrict token, const char* const restrict source, const size_t source_length) {
 	GEN_FRAME_BEGIN(cio_internal_set_sequence_type);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(token);
@@ -24,19 +22,19 @@ static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const
 	bool result = false;
 	gen_error_t error = GEN_OK;
 
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "return", sizeof("return"), token->length, &result);
+	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "return", sizeof("return"), token->length, &result);
 	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
 	if(result) {
 		token->type = CIO_TOKEN_RETURN;
 		GEN_ALL_OK;
 	}
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "storage", sizeof("storage"), token->length, &result);
+	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "storage", sizeof("storage"), token->length, &result);
 	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
 	if(result) {
 		token->type = CIO_TOKEN_STORAGE;
 		GEN_ALL_OK;
 	}
-	error = gen_string_compare(source + token->offset, (source_len + 1) - token->offset, "alignment", sizeof("alignment"), token->length, &result);
+	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "alignment", sizeof("alignment"), token->length, &result);
 	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
 	if(result) {
 		token->type = CIO_TOKEN_ALIGNMENT;
@@ -47,21 +45,17 @@ static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const
 	GEN_ALL_OK;
 }
 
-gen_error_t cio_tokenize(const char* const restrict source, cio_token_t** const restrict out_tokens, size_t* const restrict out_n_tokens) {
+gen_error_t cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
 	GEN_FRAME_BEGIN(cio_tokenize);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
 	GEN_INTERNAL_BASIC_PARAM_CHECK(out_tokens);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_n_tokens);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(out_tokens_length);
 
 	*out_tokens = NULL;
-	*out_n_tokens = 0;
+	*out_tokens_length = 0;
 
 	gen_error_t error = GEN_OK;
-
-	size_t source_len = 0;
-	error = gen_string_length(source, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &source_len);
-	GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
 
 	size_t offset = 0;
 	char c = 0;
@@ -69,9 +63,9 @@ gen_error_t cio_tokenize(const char* const restrict source, cio_token_t** const 
 	do {
 		if(IS_WHITESPACE) goto next_character;
 
-		error = grealloc((void**) out_tokens, ++*out_n_tokens, sizeof(cio_token_t));
+		error = grealloc((void**) out_tokens, ++*out_tokens_length, sizeof(cio_token_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-		cio_token_t* const token = &(*out_tokens)[*out_n_tokens - 1];
+		cio_token_t* const token = &(*out_tokens)[*out_tokens_length - 1];
 		token->offset = offset;
 
 		switch(c) {
@@ -101,7 +95,7 @@ gen_error_t cio_tokenize(const char* const restrict source, cio_token_t** const 
 					while(true) {
 						token->length = offset - token->offset;
 						if(IS_WHITESPACE || c == '{' || c == '}' || c == '<' || c == '>' || c == ';' || c == ',') {
-							error = cio_internal_set_sequence_type(token, source, source_len);
+							error = cio_internal_set_sequence_type(token, source, source_length);
 							GEN_ERROR_OUT_IF(error, "`cio_internal_set_sequence_type` failed");
 							goto current_character;
 						}

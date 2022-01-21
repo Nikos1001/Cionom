@@ -53,6 +53,10 @@ int main(const int argc, const char* const* const argv) {
 		GEN_REQUIRE_NO_REACH;
 	}
 
+	size_t filename_length = 0;
+	error = gen_string_length(args.file, GEN_PATH_MAX + 1, GEN_PATH_MAX, &filename_length);
+	GEN_REQUIRE_NO_ERROR(error);
+
 	gen_filesystem_handle_t source_handle = {0};
 	error = gen_handle_open(&source_handle, args.file);
 	GEN_REQUIRE_NO_ERROR(error);
@@ -68,12 +72,12 @@ int main(const int argc, const char* const* const argv) {
 	GEN_REQUIRE_NO_ERROR(error);
 
 	cio_token_t* tokens = NULL;
-	size_t n_tokens = 0;
-	error = cio_tokenize(source, &tokens, &n_tokens);
+	size_t tokens_length = 0;
+	error = cio_tokenize(source, source_length, &tokens, &tokens_length);
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.debug) {
-		GEN_FOREACH_PTR(i, token, n_tokens, tokens) {
+		GEN_FOREACH_PTR(i, token, tokens_length, tokens) {
 			switch(token->type) {
 				case CIO_TOKEN_IDENTIFIER: {
 					glog(DEBUG, "CIO_TOKEN_IDENTIFIER");
@@ -128,6 +132,6 @@ int main(const int argc, const char* const* const argv) {
 	}
 
 	cio_program_t program = {0};
-	error = cio_parse(tokens, n_tokens, source, args.file, &program);
+	error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
 	GEN_REQUIRE_NO_ERROR(error);
 }
