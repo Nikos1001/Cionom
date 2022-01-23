@@ -3,14 +3,12 @@
 
 #include "include/cionom.h"
 
-#define ADVANCE (c = source[++offset])
-#define IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n')
-#define IS_NUMBER (c > '0' && c < '9')
-#define CHARACTER_TOKEN(t) \
-	do { \
-		token->type = t; \
-		token->length = 1; \
-	} while(0); \
+#define CIO_INTERNAL_TOKENIZER_ADVANCE (c = source[++offset])
+#define CIO_INTERNAL_TOKENIZER_IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n')
+#define CIO_INTERNAL_TOKENIZER_IS_NUMBER (c > '0' && c < '9')
+#define CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(t) \
+	token->type = t; \
+	token->length = 1; \
 	goto next_character
 
 static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const restrict token, const char* const restrict source, const size_t source_length) {
@@ -61,7 +59,7 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 	char c = 0;
 
 	do {
-		if(IS_WHITESPACE) goto next_character;
+		if(CIO_INTERNAL_TOKENIZER_IS_WHITESPACE) goto next_character;
 
 		error = grealloc((void**) out_tokens, ++*out_tokens_length, sizeof(cio_token_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
@@ -69,43 +67,43 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 		token->offset = offset;
 
 		switch(c) {
-			case '{': CHARACTER_TOKEN(CIO_TOKEN_BLOCK_START);
-			case '}': CHARACTER_TOKEN(CIO_TOKEN_BLOCK_END);
-			case '<': CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_START);
-			case '>': CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_END);
-			case ';': CHARACTER_TOKEN(CIO_TOKEN_STATEMENT_DELIMITER);
-			case ',': CHARACTER_TOKEN(CIO_TOKEN_PARAMETER_DELIMITER);
+			case '{': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_BLOCK_START);
+			case '}': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_BLOCK_END);
+			case '<': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_START);
+			case '>': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_SPECIFIER_EXPRESSION_END);
+			case ';': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_STATEMENT_DELIMITER);
+			case ',': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_PARAMETER_DELIMITER);
 			case '"': {
 				token->type = CIO_TOKEN_STRING;
-				while(ADVANCE != '"') {
+				while(CIO_INTERNAL_TOKENIZER_ADVANCE != '"') {
 					token->length = offset - token->offset;
 				}
 				goto next_character;
 			}
 			default: {
-				if(IS_NUMBER) {
+				if(CIO_INTERNAL_TOKENIZER_IS_NUMBER) {
 					token->type = CIO_TOKEN_NUMBER;
 					do {
 						token->length = offset - token->offset;
-						ADVANCE;
-					} while(IS_NUMBER);
+						CIO_INTERNAL_TOKENIZER_ADVANCE;
+					} while(CIO_INTERNAL_TOKENIZER_IS_NUMBER);
 					goto current_character;
 				}
 				else {
 					while(true) {
 						token->length = offset - token->offset;
-						if(IS_WHITESPACE || c == '{' || c == '}' || c == '<' || c == '>' || c == ';' || c == ',') {
+						if(CIO_INTERNAL_TOKENIZER_IS_WHITESPACE || c == '{' || c == '}' || c == '<' || c == '>' || c == ';' || c == ',') {
 							error = cio_internal_set_sequence_type(token, source, source_length);
 							GEN_ERROR_OUT_IF(error, "`cio_internal_set_sequence_type` failed");
 							goto current_character;
 						}
-						ADVANCE;
+						CIO_INTERNAL_TOKENIZER_ADVANCE;
 					}
 				}
 			}
 		}
 	next_character:
-		ADVANCE;
+		CIO_INTERNAL_TOKENIZER_ADVANCE;
 	current_character:
 		continue;
 	} while(c);

@@ -47,7 +47,7 @@ struct cio_expression {
         CIO_EXPRESSION_NUMBER
     } type;
     union {
-        struct cio_storage* storage;
+        cio_storage_t* storage;
         const char* string;
         size_t number;
     };
@@ -67,7 +67,7 @@ struct cio_storage {
 };
 
 struct cio_call {
-    struct cio_routine* routine;
+    cio_routine_t* routine;
     size_t parameters_length;
     cio_expression_t* parameters;
 };
