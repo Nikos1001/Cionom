@@ -11,7 +11,10 @@ gen_error_t cio_line_from_offset(const size_t offset, size_t* const restrict out
 
 	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
 
-	*out_line = offset;
+	*out_line = 1;
+	GEN_STRING_FOREACH(c, source_length, source)
+	if(*c == '\n') ++*out_line;
+
 	GEN_ALL_OK;
 }
 
@@ -23,6 +26,11 @@ gen_error_t cio_column_from_offset(const size_t offset, size_t* const restrict o
 
 	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
 
-	*out_column = offset;
+	*out_column = 1;
+	GEN_STRING_FOREACH(c, source_length, source) {
+		++*out_column;
+		if(*c == '\n') *out_column = 1;
+	}
+
 	GEN_ALL_OK;
 }

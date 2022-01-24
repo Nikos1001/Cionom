@@ -7,26 +7,23 @@
 GEN_ERRORABLE cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length);
 GEN_ERRORABLE cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length);
 
+typedef enum {
+    CIO_TOKEN_IDENTIFIER = 1 << 1,
+    CIO_TOKEN_RETURN = 1 << 2,
+    CIO_TOKEN_STORAGE = 1 << 3,
+    CIO_TOKEN_ALIGNMENT = 1 << 4,
+    CIO_TOKEN_BLOCK_START = 1 << 5,
+    CIO_TOKEN_BLOCK_END = 1 << 6,
+    CIO_TOKEN_SPECIFIER_EXPRESSION_START = 1 << 7,
+    CIO_TOKEN_SPECIFIER_EXPRESSION_END = 1 << 8,
+    CIO_TOKEN_STATEMENT_DELIMITER = 1 << 9,
+    CIO_TOKEN_PARAMETER_DELIMITER = 1 << 10,
+    CIO_TOKEN_NUMBER = 1 << 11,
+    CIO_TOKEN_STRING = 1 << 12
+} cio_token_type_t;
+
 typedef struct {
-    enum {
-        CIO_TOKEN_IDENTIFIER,
-
-        CIO_TOKEN_RETURN,
-        CIO_TOKEN_STORAGE,
-        CIO_TOKEN_ALIGNMENT,
-
-        CIO_TOKEN_BLOCK_START,
-        CIO_TOKEN_BLOCK_END,
-
-        CIO_TOKEN_SPECIFIER_EXPRESSION_START,
-        CIO_TOKEN_SPECIFIER_EXPRESSION_END,
-
-        CIO_TOKEN_STATEMENT_DELIMITER,
-        CIO_TOKEN_PARAMETER_DELIMITER,
-
-        CIO_TOKEN_NUMBER,
-        CIO_TOKEN_STRING
-    } type;
+    cio_token_type_t type;
     size_t offset;
     size_t length;
 } cio_token_t;
@@ -57,7 +54,7 @@ struct cio_storage {
     const char* identifier;
     enum {
         CIO_SIZE_CONSTANT,
-        CIO_SIZE_VARIABLE,
+        CIO_SIZE_VARIABLE
     } size_type;
     union {
         size_t constant;
