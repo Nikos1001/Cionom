@@ -84,9 +84,9 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 				if(CIO_INTERNAL_TOKENIZER_IS_NUMBER) {
 					token->type = CIO_TOKEN_NUMBER;
 					do {
-						token->length = offset - token->offset;
 						CIO_INTERNAL_TOKENIZER_ADVANCE;
 					} while(CIO_INTERNAL_TOKENIZER_IS_NUMBER);
+					token->length = offset - token->offset;
 					goto current_character;
 				}
 				else {

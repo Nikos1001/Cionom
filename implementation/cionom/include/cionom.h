@@ -45,21 +45,14 @@ struct cio_expression {
     } type;
     union {
         cio_storage_t* storage;
-        const char* string;
+        char* string;
         size_t number;
     };
 };
 
 struct cio_storage {
-    const char* identifier;
-    enum {
-        CIO_SIZE_CONSTANT,
-        CIO_SIZE_VARIABLE
-    } size_type;
-    union {
-        size_t constant;
-        const cio_storage_t* variable;
-    } size;
+    char* identifier;
+    size_t size;
     size_t alignment;
 };
 

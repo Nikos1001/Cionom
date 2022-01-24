@@ -19,7 +19,7 @@ A [call](#Call), `return` or a [storage declaration](#Storage-Declaration), foll
 An [identifier](#Identifier), followed by 0 or more [expressions](#Expression) delimited by `,`
 
 ### Storage Declaration
-A [storage specifier](#Storage-Specifier), optionally followed by an [alignment specifier](#Alignment-Specifier), followed by an [identifier](#Identifier)
+A [storage specifier](#Storage-Specifier), followed by an [alignment specifier](#Alignment-Specifier), followed by an [identifier](#Identifier)
 
 ### Storage Specifier
 `storage`, followed by a [specifier expression](#Specifier-Expression)
@@ -28,7 +28,7 @@ A [storage specifier](#Storage-Specifier), optionally followed by an [alignment 
 `alignment`, followed by a [specifier expression](#Specifier-Expression)
 
 ### Specifier Expression
-An [expression](#Expression) surrounded by `<` and `>`
+A [number](#Number) surrounded by `<` and `>`
 
 ### Expression
 A [number](#Number), [string](#String) or [identifier](#Identifier)
@@ -62,9 +62,7 @@ A conformant implementation may allow statements to be arbitrarily qualified und
 Additionally the semantics of calls may be modified by additional qualification preceeding the routine identifier under a [statement qualification](#Statement-Qualification) extension. 
 
 ### Storage Declaration
-The [Cíonom grammar specification](#Cíonom-Grammar-Specification) only allows for storage and alignment specifiers, with storage specifiers being mandatory. However a conformant implementation may provide any number of additional [nonstandard-specifiers](#Nonstandard-Specifiers). Additionally the [Cíonom grammar specification](#Cíonom-Grammar-Specification) states that a storage declaration is terminated by an identifier followed by `;`, however a conformant implementation is permitted to allow additional instruction beyond the identifer and before the `;` such as the provision of [initializer expressions](#Initializer-Expressions).
-
-A storage declaration without an alignment specifier is taken to have an alignment of 1.
+The [Cíonom grammar specification](#Cíonom-Grammar-Specification) only allows for storage and alignment specifiers, and only numeric specifier expressions. However a conformant implementation may provide any number of additional [nonstandard-specifiers](#Nonstandard-Specifiers). Additionally the [Cíonom grammar specification](#Cíonom-Grammar-Specification) states that a storage declaration is terminated by an identifier followed by `;`, however a conformant implementation is permitted to allow additional instruction beyond the identifer and before the `;` such as the provision of [initializer expressions](#Initializer-Expressions).
 
 Storage is only valid within the routine it is declared - access outside of its enclosing routine after the routine's runtime has expired is undefined.
 
@@ -79,7 +77,7 @@ The [Cíonom grammar specification](#Cíonom-Grammar-Specification) allows for a
 The value provided to a alignment specifier is taken to be unsigned.
 
 ### Specifier Expression
-The [Cíonom grammar specification](#Cíonom-Grammar-Specification) allows for identifiers in specifier expressions, to be expanded as numeric values (storage of specification `storage<8> alignment<8>`). However this will lead to runtime storage sizes (this may be avoided in some cases if the implementation provides provides [constant marking](#Constant-Marking) and [initializer expressions](#Initializer-Expressions)), this may be handled by the implementation either by allocating the value on the heap and automatically inserting a free at the end of the lifetime of the storage, or by creating a VLA (this may be controllable if the implementation provides a [storage strategy specifier](#Storage-Strategy)).
+The [Cíonom grammar specification](#Cíonom-Grammar-Specification) does not allow for identifiers in specifier expressions. This disallows runtime storage sizes, this may be handled by the implementation either by allocating the value on the heap and automatically inserting a free at the end of the lifetime of the storage, or by creating a VLA (this may be controllable if the implementation provides a [storage strategy specifier](#Storage-Strategy)).
 
 ### Expression
 When resolving to a value, a routine identifier will become a storage of specification `storage<8> alignment<8>` containing the address of the routine.
@@ -101,6 +99,8 @@ When a number is placed in a program as an expression, it acts as the value of a
 
 Numbers are non-modifiable and the programmer should ensure that when passed to a routine call (or a [nonstandard-specifier](#Nonstandard-Specifiers) - Cíonom standard specifiers will never modify the specifier expression) that the storage will not be modified. This may be ensured by the implementation if it provides [constant marking](#Constant-Marking).
 
+Numbers are taken to be in base-10.
+
 ### String
 When a string of length N characters is placed in a program as an expression, it acts as the value of a storage of specification `storage<N+1> alignment<1>`. The final byte of the storage will be 0 in order to be interoperable with C strings.
 
@@ -117,11 +117,11 @@ Allows for the application of the C preprocessor to Cíonom source before being 
 Allows strings to contain escape sequences similar to C string literals such as `\n` for newline or `\e` for escape. The codes provided by the extension are decided by the implementation.
 
 ### Nonstandard Specifiers
-Allows specifiers in storage declarations other than `alignment`. These should be optional and may have semantics beyond those stated here. Additional specifiers may not take additional parameters and the implementation should instead opt for a specifier for every aspect of the desired behaviour (e.g. `foobar<a, b>` should instead be `foo<a> bar<b>`). These specifiers should be prefixed by `__cionom_extension_specifier_`.
+Allows for additional specifiers in storage declarations other than `alignment`, and being specified by more than numbers. These should be optional and may have semantics beyond those stated here. Additional specifiers may not take additional parameters and the implementation should instead opt for a specifier for every aspect of the desired behaviour (e.g. `foobar<a, b>` should instead be `foo<a> bar<b>`). These specifiers should be prefixed by `__cionom_extension_specifier_`.
 #### Constant Marking
 Allows for the marking of storage as constant with `__cionom_extension_specifier_constant`. This may be useful for implementations marking strings or numbers as constant to avoid inadvertant modification by functions, or to allow the programmer to mark a statement to not be modified if supplied alongside the [initializer expressions](#Initializer-Expressions) extension. Storage marked constant cannot be passed as a parameter to calls whose parameter declaration is not also marked constant. This may create issues with compatibility with non-extended code so an implementation may opt to also implement the [call discard constant](#Call-Discard-Constant) extension.
 #### Storage Strategy
-Allows the programmer to use `__cionom_extension_specifier_storage_strategy<"strategy">` to signal to the implementation which strategy should be used for allocation in a storage declaration. Suggested accepted values for strategy may be `heap`, `stack_constant` or `stack_variable`.
+Allows the programmer to use `__cionom_extension_specifier_storage_strategy<"strategy">` to signal to the implementation which strategy should be used for allocation in a storage declaration. Suggested accepted values for strategy may be `__cionom_extension_specifier_storage_strategy_heap`, `__cionom_extension_specifier_storage_strategy_stack_constant` or `__cionom_extension_specifier_storage_strategy_stack_variable`.
 ### Shadowing
 Allows for the reuse of identifiers by storage declarations, with the evaluation of a shadowed identifier being determined by the last declaration using the identifier. To allow shadowing by a storage declaration the programmer may add `__cionom_extension_specifier_shadow`.
 
