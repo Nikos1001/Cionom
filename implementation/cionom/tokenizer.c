@@ -20,23 +20,29 @@ static __nodiscard gen_error_t cio_internal_set_sequence_type(cio_token_t* const
 	bool result = false;
 	gen_error_t error = GEN_OK;
 
-	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "return", sizeof("return"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_RETURN;
-		GEN_ALL_OK;
+	if(sizeof("return") - 1 == token->length) {
+		error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "return", sizeof("return"), token->length, &result);
+		GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
+		if(result) {
+			token->type = CIO_TOKEN_RETURN;
+			GEN_ALL_OK;
+		}
 	}
-	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "storage", sizeof("storage"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_STORAGE;
-		GEN_ALL_OK;
+	if(sizeof("storage") - 1 == token->length) {
+		error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "storage", sizeof("storage"), token->length, &result);
+		GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
+		if(result) {
+			token->type = CIO_TOKEN_STORAGE;
+			GEN_ALL_OK;
+		}
 	}
-	error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "alignment", sizeof("alignment"), token->length, &result);
-	GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-	if(result) {
-		token->type = CIO_TOKEN_ALIGNMENT;
-		GEN_ALL_OK;
+	if(sizeof("alignment") - 1 == token->length) {
+		error = gen_string_compare(source + token->offset, (source_length + 1) - token->offset, "alignment", sizeof("alignment"), token->length, &result);
+		GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
+		if(result) {
+			token->type = CIO_TOKEN_ALIGNMENT;
+			GEN_ALL_OK;
+		}
 	}
 
 	token->type = CIO_TOKEN_IDENTIFIER;
@@ -75,9 +81,9 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 			case ',': CIO_INTERNAL_TOKENIZER_CHARACTER_TOKEN(CIO_TOKEN_PARAMETER_DELIMITER);
 			case '"': {
 				token->type = CIO_TOKEN_STRING;
-				while(CIO_INTERNAL_TOKENIZER_ADVANCE != '"') {
-					token->length = offset - token->offset;
-				}
+				while(CIO_INTERNAL_TOKENIZER_ADVANCE != '"')
+					;
+				token->length = (offset - token->offset) + 1;
 				goto next_character;
 			}
 			default: {

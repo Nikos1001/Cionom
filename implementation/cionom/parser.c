@@ -6,22 +6,23 @@
 typedef unsigned cio_internal_sequence_t;
 
 static const cio_internal_sequence_t cio_internal_token_identifier_sequence[] = {CIO_TOKEN_IDENTIFIER};
-// static const cio_internal_sequence_t cio_internal_token_return_sequence[] = {CIO_TOKEN_RETURN};
 // static const cio_internal_sequence_t cio_internal_token_storage_sequence[] = {CIO_TOKEN_STORAGE};
 // static const cio_internal_sequence_t cio_internal_token_alignment_sequence[] = {CIO_TOKEN_ALIGNMENT};
 // static const cio_internal_sequence_t cio_internal_token_block_start_sequence[] = {CIO_TOKEN_BLOCK_START};
 // static const cio_internal_sequence_t cio_internal_token_block_end_sequence[] = {CIO_TOKEN_BLOCK_END};
 // static const cio_internal_sequence_t cio_internal_token_specifier_expression_start_sequence[] = {CIO_TOKEN_SPECIFIER_EXPRESSION_START};
 // static const cio_internal_sequence_t cio_internal_token_specifier_expression_end_sequence[] = {CIO_TOKEN_SPECIFIER_EXPRESSION_END};
-// static const cio_internal_sequence_t cio_internal_token_statement_delimiter_sequence[] = {CIO_TOKEN_STATEMENT_DELIMITER};
+static const cio_internal_sequence_t cio_internal_token_statement_delimiter_sequence[] = {CIO_TOKEN_STATEMENT_DELIMITER};
 static const cio_internal_sequence_t cio_internal_token_parameter_delimiter_sequence[] = {CIO_TOKEN_PARAMETER_DELIMITER};
 // static const cio_internal_sequence_t cio_internal_token_number_sequence[] = {CIO_TOKEN_NUMBER};
 // static const cio_internal_sequence_t cio_internal_token_string_sequence[] = {CIO_TOKEN_STRING};
 
+static const cio_internal_sequence_t cio_internal_return_sequence[] = {CIO_TOKEN_RETURN, CIO_TOKEN_STATEMENT_DELIMITER};
+static const cio_internal_sequence_t cio_internal_value_sequence[] = {CIO_TOKEN_STRING | CIO_TOKEN_IDENTIFIER | CIO_TOKEN_NUMBER};
 static const cio_internal_sequence_t cio_internal_storage_sequence[] = {CIO_TOKEN_STORAGE, CIO_TOKEN_SPECIFIER_EXPRESSION_START, CIO_TOKEN_NUMBER, CIO_TOKEN_SPECIFIER_EXPRESSION_END};
 static const cio_internal_sequence_t cio_internal_alignment_sequence[] = {CIO_TOKEN_ALIGNMENT, CIO_TOKEN_SPECIFIER_EXPRESSION_START, CIO_TOKEN_NUMBER, CIO_TOKEN_SPECIFIER_EXPRESSION_END};
 
-#define CIO_INTERNAL_SEQUENCE_LENGTH(sequence) (sizeof(sequence) / sizeof(cio_token_type_t))
+#define CIO_INTERNAL_SEQUENCE_LENGTH(sequence) (sizeof(sequence) / sizeof(cio_internal_sequence_t))
 
 static __nodiscard gen_error_t cio_internal_parse_error(const cio_token_t* const restrict token, const char* const restrict message, const char* const restrict source, const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_internal_parse_error);
@@ -62,7 +63,7 @@ static __nodiscard gen_error_t cio_internal_validate_sequence(const cio_token_t*
 
 	GEN_FOREACH_PTR(i, token, sequence_length, &tokens[first]) {
 		if(!(token->type & sequence[i])) {
-			error = cio_internal_parse_error(&tokens[i], "Unexpected token", source, source_length, source_file, source_file_length);
+			error = cio_internal_parse_error(&tokens[first + i], "Unexpected token", source, source_length, source_file, source_file_length);
 			GEN_ERROR_OUT_IF(error, "`cio_internal_parse_error` failed");
 			GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
 		}
@@ -154,9 +155,11 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 
 			error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_parameter_delimiter_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_parameter_delimiter_sequence), source, source_length, source_file, source_file_length);
 			GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
-
 			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_parameter_delimiter_sequence));
 		}
+		if(token->type & CIO_TOKEN_STATEMENT_DELIMITER) continue;
+
+		GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence));
 
 		while(!(token->type & CIO_TOKEN_BLOCK_END)) {
 			error = grealloc((void**) &routine->statements, ++routine->statements_length, sizeof(cio_statement_t));
@@ -166,18 +169,97 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 
 			if(token->type & CIO_TOKEN_STORAGE) {
 				statement->type = CIO_STATEMENT_STORAGE;
-				error = gzalloc(&statement->storage, 1, sizeof(cio_storage_t));
-				GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
 				size_t stride = 0;
 				error = cio_internal_parse_storage(tokens, tokens_length, offset, &stride, &statement->storage, source, source_length, source_file, source_file_length);
 				GEN_ERROR_OUT_IF(error, "`cio_internal_parse_storage` failed");
+				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, stride);
+
+				error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_statement_delimiter_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence), source, source_length, source_file, source_file_length);
+				GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence));
 			}
 			else if(token->type & CIO_TOKEN_IDENTIFIER) {
 				statement->type = CIO_STATEMENT_CALL;
+
+				error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &statement->call.identifier);
+				GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+
+				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence));
+
+				while(!(token->type & CIO_TOKEN_STATEMENT_DELIMITER)) {
+					error = grealloc((void**) &statement->call.parameters, ++statement->call.parameters_length, sizeof(cio_expression_t));
+					GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+
+					cio_expression_t* const parameter = &statement->call.parameters[statement->call.parameters_length - 1];
+
+					error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_value_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence), source, source_length, source_file, source_file_length);
+					GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+					switch(token->type) {
+						case CIO_TOKEN_NUMBER: {
+							parameter->type = CIO_EXPRESSION_NUMBER;
+
+							char* temporary_number_copy = NULL;
+							error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &temporary_number_copy);
+							GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+							parameter->number = strtoul(temporary_number_copy, NULL, 10);
+							GEN_ERROR_OUT_IF_ERRNO(strtoul, errno);
+							error = gfree(temporary_number_copy);
+							GEN_ERROR_OUT_IF(error, "`gfree` failed");
+
+							break;
+						}
+						case CIO_TOKEN_STRING: {
+							parameter->type = CIO_EXPRESSION_STRING;
+
+							error = gen_string_duplicate(source + token->offset + 1, source_length - token->offset, token->length - 2, &parameter->string);
+							GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+
+							break;
+						}
+						case CIO_TOKEN_IDENTIFIER: {
+							parameter->type = CIO_EXPRESSION_STORAGE;
+
+							error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &parameter->identifier);
+							GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+
+							break;
+						}
+						case CIO_TOKEN_RETURN:
+						case CIO_TOKEN_STORAGE:
+						case CIO_TOKEN_ALIGNMENT:
+						case CIO_TOKEN_BLOCK_START:
+						case CIO_TOKEN_BLOCK_END:
+						case CIO_TOKEN_SPECIFIER_EXPRESSION_START:
+						case CIO_TOKEN_SPECIFIER_EXPRESSION_END:
+						case CIO_TOKEN_STATEMENT_DELIMITER:
+						case CIO_TOKEN_PARAMETER_DELIMITER: {
+							error = cio_internal_parse_error(token, "Unexpected token", source, source_length, source_file, source_file_length);
+							GEN_ERROR_OUT_IF(error, "`cio_internal_parse_error` failed");
+							GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
+						}
+					}
+					error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_value_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence), source, source_length, source_file, source_file_length);
+					GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+					GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence));
+
+					if(token->type & CIO_TOKEN_STATEMENT_DELIMITER) break;
+
+					error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_parameter_delimiter_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_parameter_delimiter_sequence), source, source_length, source_file, source_file_length);
+					GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+					GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_parameter_delimiter_sequence));
+				}
+
+				error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_statement_delimiter_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence), source, source_length, source_file, source_file_length);
+				GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence));
 			}
 			else if(token->type & CIO_TOKEN_RETURN) {
 				statement->type = CIO_STATEMENT_RETURN;
+
+				error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_return_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_return_sequence), source, source_length, source_file, source_file_length);
+				GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_return_sequence));
 			}
 			else {
 				error = cio_internal_parse_error(token, "Unexpected token", source, source_length, source_file, source_file_length);
@@ -185,8 +267,6 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 				GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
 			}
 		}
-
-		break; // TODO Remove me!
 	}
 
 	GEN_ALL_OK;

@@ -151,7 +151,24 @@ int main(const int argc, const char* const* const argv) {
 						break;
 					}
 					case CIO_STATEMENT_CALL: {
-						glog(DEBUG, "| | ├ statement");
+						glogf(DEBUG, "| | ├ call %s", statement.call.identifier);
+						GEN_FOREACH(k, call_parameter, statement.call.parameters_length, statement.call.parameters) {
+							glog(DEBUG, "| | | ├ parameters:");
+							switch(call_parameter.type) {
+								case CIO_EXPRESSION_NUMBER: {
+									glogf(DEBUG, "| | | | ├ %zu", call_parameter.number);
+									break;
+								}
+								case CIO_EXPRESSION_STORAGE: {
+									glogf(DEBUG, "| | | | ├ %s", call_parameter.identifier);
+									break;
+								}
+								case CIO_EXPRESSION_STRING: {
+									glogf(DEBUG, "| | | | ├ \"%s\"", call_parameter.string);
+									break;
+								}
+							}
+						}
 						break;
 					}
 					case CIO_STATEMENT_RETURN: {
