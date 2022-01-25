@@ -134,4 +134,32 @@ int main(const int argc, const char* const* const argv) {
 	cio_program_t program = {0};
 	error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
 	GEN_REQUIRE_NO_ERROR(error);
+
+	if(args.debug) {
+		glogf(DEBUG, "%s", args.file);
+		GEN_FOREACH(i, routine, program.routines_length, program.routines) {
+			glogf(DEBUG, "├ %s", routine.identifier);
+			glog(DEBUG, "| ├ parameters:");
+			GEN_FOREACH(j, parameter, routine.parameters_length, routine.parameters) {
+				glogf(DEBUG, "| | ├ %s size: %zu alignment: %zu", parameter.identifier, parameter.size, parameter.alignment);
+			}
+			glog(DEBUG, "| ├ statements:");
+			GEN_FOREACH(j, statement, routine.statements_length, routine.statements) {
+				switch(statement.type) {
+					case CIO_STATEMENT_STORAGE: {
+						glogf(DEBUG, "| | ├ %s size: %zu alignment: %zu", statement.storage.identifier, statement.storage.size, statement.storage.alignment);
+						break;
+					}
+					case CIO_STATEMENT_CALL: {
+						glog(DEBUG, "| | ├ statement");
+						break;
+					}
+					case CIO_STATEMENT_RETURN: {
+						glog(DEBUG, "| | ├ return");
+						break;
+					}
+				}
+			}
+		}
+	}
 }

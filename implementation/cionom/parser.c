@@ -62,11 +62,56 @@ static __nodiscard gen_error_t cio_internal_validate_sequence(const cio_token_t*
 
 	GEN_FOREACH_PTR(i, token, sequence_length, &tokens[first]) {
 		if(!(token->type & sequence[i])) {
-			error = cio_internal_parse_error(&tokens[first], "Unexpected token", source, source_length, source_file, source_file_length);
+			error = cio_internal_parse_error(&tokens[i], "Unexpected token", source, source_length, source_file, source_file_length);
 			GEN_ERROR_OUT_IF(error, "`cio_internal_parse_error` failed");
 			GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
 		}
 	}
+
+	GEN_ALL_OK;
+}
+
+static __nodiscard gen_error_t cio_internal_parse_storage(const cio_token_t* const restrict tokens, const size_t tokens_length, const size_t first, size_t* const restrict out_stride, cio_storage_t* const restrict out_storage, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
+	GEN_FRAME_BEGIN(cio_internal_parse_storage);
+
+	GEN_INTERNAL_BASIC_PARAM_CHECK(tokens);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(out_storage);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(out_stride);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
+	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
+
+	gen_error_t error = GEN_OK;
+	size_t offset = first;
+
+	error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_storage_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_storage_sequence), source, source_length, source_file, source_file_length);
+	GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+	char* temporary_size_copy = NULL;
+	error = gen_string_duplicate(source + tokens[offset + 2].offset, source_length - tokens[offset + 2].offset, tokens[offset + 2].length, &temporary_size_copy);
+	GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+	out_storage->size = strtoul(temporary_size_copy, NULL, 10);
+	GEN_ERROR_OUT_IF_ERRNO(strtoul, errno);
+	error = gfree(temporary_size_copy);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	offset += CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_storage_sequence);
+
+	error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_alignment_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_alignment_sequence), source, source_length, source_file, source_file_length);
+	GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+	char* temporary_alignment_copy = NULL;
+	error = gen_string_duplicate(source + tokens[offset + 2].offset, source_length - tokens[offset + 2].offset, tokens[offset + 2].length, &temporary_alignment_copy);
+	GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+	out_storage->alignment = strtoul(temporary_alignment_copy, NULL, 10);
+	GEN_ERROR_OUT_IF_ERRNO(strtoul, errno);
+	error = gfree(temporary_alignment_copy);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	offset += CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_alignment_sequence);
+
+	error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_identifier_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence), source, source_length, source_file, source_file_length);
+	GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
+	error = gen_string_duplicate(source + tokens[offset].offset, source_length - tokens[offset].offset, tokens[offset].length, &out_storage->identifier);
+	GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
+	offset += CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence);
+
+	*out_stride = offset - first;
 
 	GEN_ALL_OK;
 }
@@ -97,38 +142,13 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 		GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence));
 
 		while(!(token->type & (CIO_TOKEN_BLOCK_START | CIO_TOKEN_STATEMENT_DELIMITER))) {
-			error = grealloc((void**) &routine->parameters, ++routine->parameters_length, sizeof(cio_routine_t));
+			error = grealloc((void**) &routine->parameters, ++routine->parameters_length, sizeof(cio_storage_t));
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
-			cio_storage_t* const parameter = &routine->parameters[routine->parameters_length - 1];
-
-			error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_storage_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_storage_sequence), source, source_length, source_file, source_file_length);
-			GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
-			char* temporary_size_copy = NULL;
-			error = gen_string_duplicate(source + tokens[offset + 2].offset, source_length - tokens[offset + 2].offset, tokens[offset + 2].length, &temporary_size_copy);
-			GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
-			parameter->size = strtoul(temporary_size_copy, NULL, 10);
-			GEN_ERROR_OUT_IF_ERRNO(strtoul, errno);
-			error = gfree(temporary_size_copy);
-			GEN_ERROR_OUT_IF(error, "`gfree` failed");
-			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_storage_sequence));
-
-			error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_alignment_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_alignment_sequence), source, source_length, source_file, source_file_length);
-			GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
-			char* temporary_alignment_copy = NULL;
-			error = gen_string_duplicate(source + tokens[offset + 2].offset, source_length - tokens[offset + 2].offset, tokens[offset + 2].length, &temporary_alignment_copy);
-			GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
-			parameter->alignment = strtoul(temporary_alignment_copy, NULL, 10);
-			GEN_ERROR_OUT_IF_ERRNO(strtoul, errno);
-			error = gfree(temporary_alignment_copy);
-			GEN_ERROR_OUT_IF(error, "`gfree` failed");
-			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_alignment_sequence));
-
-			error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_identifier_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence), source, source_length, source_file, source_file_length);
-			GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
-			error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &parameter->identifier);
-			GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
-			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence));
+			size_t stride = 0;
+			error = cio_internal_parse_storage(tokens, tokens_length, offset, &stride, &routine->parameters[routine->parameters_length - 1], source, source_length, source_file, source_file_length);
+			GEN_ERROR_OUT_IF(error, "`cio_internal_parse_storage` failed");
+			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, stride);
 
 			if(token->type & (CIO_TOKEN_BLOCK_START | CIO_TOKEN_STATEMENT_DELIMITER)) break;
 
@@ -138,7 +158,35 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_parameter_delimiter_sequence));
 		}
 
-		break;
+		while(!(token->type & CIO_TOKEN_BLOCK_END)) {
+			error = grealloc((void**) &routine->statements, ++routine->statements_length, sizeof(cio_statement_t));
+			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+
+			cio_statement_t* const statement = &routine->statements[routine->statements_length - 1];
+
+			if(token->type & CIO_TOKEN_STORAGE) {
+				statement->type = CIO_STATEMENT_STORAGE;
+				error = gzalloc(&statement->storage, 1, sizeof(cio_storage_t));
+				GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+
+				size_t stride = 0;
+				error = cio_internal_parse_storage(tokens, tokens_length, offset, &stride, &statement->storage, source, source_length, source_file, source_file_length);
+				GEN_ERROR_OUT_IF(error, "`cio_internal_parse_storage` failed");
+			}
+			else if(token->type & CIO_TOKEN_IDENTIFIER) {
+				statement->type = CIO_STATEMENT_CALL;
+			}
+			else if(token->type & CIO_TOKEN_RETURN) {
+				statement->type = CIO_STATEMENT_RETURN;
+			}
+			else {
+				error = cio_internal_parse_error(token, "Unexpected token", source, source_length, source_file, source_file_length);
+				GEN_ERROR_OUT_IF(error, "`cio_internal_parse_error` failed");
+				GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
+			}
+		}
+
+		break; // TODO Remove me!
 	}
 
 	GEN_ALL_OK;
