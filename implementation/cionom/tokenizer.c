@@ -67,7 +67,7 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 	do {
 		if(CIO_INTERNAL_TOKENIZER_IS_WHITESPACE) goto next_character;
 
-		error = grealloc((void**) out_tokens, ++*out_tokens_length, sizeof(cio_token_t));
+		error = grealloc((void**) out_tokens, *out_tokens_length, ++*out_tokens_length, sizeof(cio_token_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 		cio_token_t* const token = &(*out_tokens)[*out_tokens_length - 1];
 		token->offset = offset;

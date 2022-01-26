@@ -48,18 +48,21 @@ struct cio_expression {
         char* string;
         size_t number;
     };
+    const cio_token_t* token;
 };
 
 struct cio_storage {
     char* identifier;
     size_t size;
     size_t alignment;
+    const cio_token_t* token;
 };
 
 struct cio_call {
     char* identifier;
     size_t parameters_length;
     cio_expression_t* parameters;
+    const cio_token_t* token;
 };
 
 struct cio_statement {
@@ -72,6 +75,7 @@ struct cio_statement {
         cio_storage_t storage;
         cio_call_t call;
     };
+    const cio_token_t* token;
 };
 
 struct cio_routine {
@@ -80,6 +84,7 @@ struct cio_routine {
     cio_storage_t* parameters;
     size_t statements_length;
     cio_statement_t* statements;
+    const cio_token_t* token;
 };
 
 struct cio_program {
@@ -88,3 +93,23 @@ struct cio_program {
 };
 
 GEN_ERRORABLE cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
+
+typedef struct {
+    unsigned char* buffer;
+    size_t size;
+    size_t alignment;
+} cio_value_t;
+
+typedef struct {
+    cio_value_t* contents;
+    size_t contents_length;
+} cio_frame_t;
+
+typedef struct {
+    cio_program_t* program;
+    cio_frame_t* frames;
+    size_t frames_length;
+} cio_interpreter_t;
+
+// GEN_ERRORABLE cio_interpret(const cio_program_t* const restrict program, cio_interpreter_t* const restrict out_state, )

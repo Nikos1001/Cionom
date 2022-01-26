@@ -6,17 +6,8 @@
 typedef unsigned cio_internal_sequence_t;
 
 static const cio_internal_sequence_t cio_internal_token_identifier_sequence[] = {CIO_TOKEN_IDENTIFIER};
-// static const cio_internal_sequence_t cio_internal_token_storage_sequence[] = {CIO_TOKEN_STORAGE};
-// static const cio_internal_sequence_t cio_internal_token_alignment_sequence[] = {CIO_TOKEN_ALIGNMENT};
-// static const cio_internal_sequence_t cio_internal_token_block_start_sequence[] = {CIO_TOKEN_BLOCK_START};
-// static const cio_internal_sequence_t cio_internal_token_block_end_sequence[] = {CIO_TOKEN_BLOCK_END};
-// static const cio_internal_sequence_t cio_internal_token_specifier_expression_start_sequence[] = {CIO_TOKEN_SPECIFIER_EXPRESSION_START};
-// static const cio_internal_sequence_t cio_internal_token_specifier_expression_end_sequence[] = {CIO_TOKEN_SPECIFIER_EXPRESSION_END};
 static const cio_internal_sequence_t cio_internal_token_statement_delimiter_sequence[] = {CIO_TOKEN_STATEMENT_DELIMITER};
 static const cio_internal_sequence_t cio_internal_token_parameter_delimiter_sequence[] = {CIO_TOKEN_PARAMETER_DELIMITER};
-// static const cio_internal_sequence_t cio_internal_token_number_sequence[] = {CIO_TOKEN_NUMBER};
-// static const cio_internal_sequence_t cio_internal_token_string_sequence[] = {CIO_TOKEN_STRING};
-
 static const cio_internal_sequence_t cio_internal_return_sequence[] = {CIO_TOKEN_RETURN, CIO_TOKEN_STATEMENT_DELIMITER};
 static const cio_internal_sequence_t cio_internal_value_sequence[] = {CIO_TOKEN_STRING | CIO_TOKEN_IDENTIFIER | CIO_TOKEN_NUMBER};
 static const cio_internal_sequence_t cio_internal_storage_sequence[] = {CIO_TOKEN_STORAGE, CIO_TOKEN_SPECIFIER_EXPRESSION_START, CIO_TOKEN_NUMBER, CIO_TOKEN_SPECIFIER_EXPRESSION_END};
@@ -133,18 +124,20 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 		error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_token_identifier_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence), source, source_length, source_file, source_file_length);
 		GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
 
-		error = grealloc((void**) &out_program->routines, ++out_program->routines_length, sizeof(cio_routine_t));
+		error = grealloc((void**) &out_program->routines, out_program->routines_length, ++out_program->routines_length, sizeof(cio_routine_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
 		cio_routine_t* const routine = &out_program->routines[out_program->routines_length - 1];
+		routine->token = token;
 		error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &routine->identifier);
 		GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
 
 		GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence));
 
 		while(!(token->type & (CIO_TOKEN_BLOCK_START | CIO_TOKEN_STATEMENT_DELIMITER))) {
-			error = grealloc((void**) &routine->parameters, ++routine->parameters_length, sizeof(cio_storage_t));
+			error = grealloc((void**) &routine->parameters, routine->parameters_length, ++routine->parameters_length, sizeof(cio_storage_t));
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+			routine->parameters[routine->parameters_length - 1].token = token;
 
 			size_t stride = 0;
 			error = cio_internal_parse_storage(tokens, tokens_length, offset, &stride, &routine->parameters[routine->parameters_length - 1], source, source_length, source_file, source_file_length);
@@ -162,13 +155,15 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 		GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_statement_delimiter_sequence));
 
 		while(!(token->type & CIO_TOKEN_BLOCK_END)) {
-			error = grealloc((void**) &routine->statements, ++routine->statements_length, sizeof(cio_statement_t));
+			error = grealloc((void**) &routine->statements, routine->statements_length, ++routine->statements_length, sizeof(cio_statement_t));
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
 			cio_statement_t* const statement = &routine->statements[routine->statements_length - 1];
+			statement->token = token;
 
 			if(token->type & CIO_TOKEN_STORAGE) {
 				statement->type = CIO_STATEMENT_STORAGE;
+				statement->storage.token = token;
 
 				size_t stride = 0;
 				error = cio_internal_parse_storage(tokens, tokens_length, offset, &stride, &statement->storage, source, source_length, source_file, source_file_length);
@@ -181,6 +176,7 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			}
 			else if(token->type & CIO_TOKEN_IDENTIFIER) {
 				statement->type = CIO_STATEMENT_CALL;
+				statement->call.token = token;
 
 				error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &statement->call.identifier);
 				GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
@@ -188,10 +184,11 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 				GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_token_identifier_sequence));
 
 				while(!(token->type & CIO_TOKEN_STATEMENT_DELIMITER)) {
-					error = grealloc((void**) &statement->call.parameters, ++statement->call.parameters_length, sizeof(cio_expression_t));
+					error = grealloc((void**) &statement->call.parameters, statement->call.parameters_length, ++statement->call.parameters_length, sizeof(cio_expression_t));
 					GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
 					cio_expression_t* const parameter = &statement->call.parameters[statement->call.parameters_length - 1];
+					parameter->token = token;
 
 					error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_value_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence), source, source_length, source_file, source_file_length);
 					GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
@@ -239,8 +236,6 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 							GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
 						}
 					}
-					error = cio_internal_validate_sequence(tokens, tokens_length, offset, cio_internal_value_sequence, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence), source, source_length, source_file, source_file_length);
-					GEN_ERROR_OUT_IF(error, "`cio_internal_validate_sequence` failed");
 					GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, CIO_INTERNAL_SEQUENCE_LENGTH(cio_internal_value_sequence));
 
 					if(token->type & CIO_TOKEN_STATEMENT_DELIMITER) break;
@@ -268,6 +263,70 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			}
 		}
 	}
+
+	GEN_ALL_OK;
+}
+
+#define gfree_if(ptr) \
+	do { \
+		if(ptr) { \
+			gen_error_t error = gfree(ptr); \
+			GEN_ERROR_OUT_IF(error, "`gfree` failed"); \
+			ptr = NULL; \
+		} \
+	} while(0)
+
+gen_error_t cio_free_program(cio_program_t* const restrict program) {
+	GEN_FRAME_BEGIN(cio_free_program);
+
+	GEN_INTERNAL_BASIC_PARAM_CHECK(program);
+
+	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
+		gfree_if(routine->identifier);
+
+		GEN_FOREACH_PTR(j, parameter, routine->parameters_length, routine->parameters) {
+			gfree_if(parameter->identifier);
+		}
+		gfree_if(routine->parameters);
+		routine->parameters_length = 0;
+
+		GEN_FOREACH_PTR(j, statement, routine->statements_length, routine->statements) {
+			switch(statement->type) {
+				case CIO_STATEMENT_STORAGE: {
+					gfree_if(statement->storage.identifier);
+					break;
+				}
+				case CIO_STATEMENT_CALL: {
+					gfree_if(statement->call.identifier);
+					GEN_FOREACH_PTR(k, call_parameter, statement->call.parameters_length, statement->call.parameters) {
+						switch(call_parameter->type) {
+							case CIO_EXPRESSION_STORAGE: {
+								gfree_if(call_parameter->identifier);
+								break;
+							}
+							case CIO_EXPRESSION_STRING: {
+								gfree_if(call_parameter->string);
+								break;
+							}
+							case CIO_EXPRESSION_NUMBER: {
+								break;
+							}
+						}
+					}
+					gfree_if(statement->call.parameters);
+					statement->call.parameters = 0;
+					break;
+				}
+				case CIO_STATEMENT_RETURN: {
+					break;
+				}
+			}
+		}
+		gfree_if(routine->statements);
+		routine->statements_length = 0;
+	}
+	gfree_if(program->routines);
+	program->routines_length = 0;
 
 	GEN_ALL_OK;
 }
