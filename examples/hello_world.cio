@@ -1,0 +1,42 @@
+storage 0
+storage= 1
+storage=*[] 1
+storage=*[+] 2
+
+copy= 2
+copy=*[] 2
+copy=*[] 2
+copy*[]=*[] 2
+copy=*[+] 3
+copy*[+]= 3
+copy*[+]=*[+] 4
+
+print 1
+print*[] 1
+print*[+] 2
+print* 1
+print*+ 2
+
+alloc 2
+
+main 0
+:
+    storage
+    alloc 0 13
+
+    copy*[+]= 0 0 72
+    copy*[+]= 0 1 101
+    copy*[+]= 0 2 108
+    copy*[+]= 0 3 108
+    copy*[+]= 0 4 111
+    copy*[+]= 0 5 44
+    copy*[+]= 0 6 32
+    copy*[+]= 0 7 119
+    copy*[+]= 0 8 111
+    copy*[+]= 0 9 114
+    copy*[+]= 0 10 108
+    copy*[+]= 0 11 100
+    copy*[+]= 0 12 33
+
+    print* 0 13
+:

@@ -83,48 +83,12 @@ int main(const int argc, const char* const* const argv) {
 					glog(DEBUG, "CIO_TOKEN_IDENTIFIER");
 					break;
 				}
-				case CIO_TOKEN_RETURN: {
-					glog(DEBUG, "CIO_TOKEN_RETURN");
-					break;
-				}
-				case CIO_TOKEN_STORAGE: {
-					glog(DEBUG, "CIO_TOKEN_STORAGE");
-					break;
-				}
-				case CIO_TOKEN_ALIGNMENT: {
-					glog(DEBUG, "CIO_TOKEN_ALIGNMENT");
-					break;
-				}
-				case CIO_TOKEN_BLOCK_START: {
-					glog(DEBUG, "CIO_TOKEN_BLOCK_START");
-					break;
-				}
-				case CIO_TOKEN_BLOCK_END: {
-					glog(DEBUG, "CIO_TOKEN_BLOCK_END");
-					break;
-				}
-				case CIO_TOKEN_SPECIFIER_EXPRESSION_START: {
-					glog(DEBUG, "CIO_TOKEN_SPECIFIER_EXPRESSION_START");
-					break;
-				}
-				case CIO_TOKEN_SPECIFIER_EXPRESSION_END: {
-					glog(DEBUG, "CIO_TOKEN_SPECIFIER_EXPRESSION_END");
-					break;
-				}
-				case CIO_TOKEN_STATEMENT_DELIMITER: {
-					glog(DEBUG, "CIO_TOKEN_STATEMENT_DELIMITER");
-					break;
-				}
-				case CIO_TOKEN_PARAMETER_DELIMITER: {
-					glog(DEBUG, "CIO_TOKEN_PARAMETER_DELIMITER");
+				case CIO_TOKEN_BLOCK: {
+					glog(DEBUG, "CIO_TOKEN_BLOCK");
 					break;
 				}
 				case CIO_TOKEN_NUMBER: {
 					glog(DEBUG, "CIO_TOKEN_NUMBER");
-					break;
-				}
-				case CIO_TOKEN_STRING: {
-					glog(DEBUG, "CIO_TOKEN_STRING");
 					break;
 				}
 			}
@@ -138,43 +102,11 @@ int main(const int argc, const char* const* const argv) {
 	if(args.debug) {
 		glogf(DEBUG, "%s", args.file);
 		GEN_FOREACH(i, routine, program.routines_length, program.routines) {
-			glogf(DEBUG, "├ %s", routine.identifier);
-			glog(DEBUG, "| ├ parameters:");
-			GEN_FOREACH(j, parameter, routine.parameters_length, routine.parameters) {
-				glogf(DEBUG, "| | ├ %s size: %zu alignment: %zu", parameter.identifier, parameter.size, parameter.alignment);
-			}
-			glog(DEBUG, "| ├ statements:");
-			GEN_FOREACH(j, statement, routine.statements_length, routine.statements) {
-				switch(statement.type) {
-					case CIO_STATEMENT_STORAGE: {
-						glogf(DEBUG, "| | ├ %s size: %zu alignment: %zu", statement.storage.identifier, statement.storage.size, statement.storage.alignment);
-						break;
-					}
-					case CIO_STATEMENT_CALL: {
-						glogf(DEBUG, "| | ├ call %s", statement.call.identifier);
-						GEN_FOREACH(k, call_parameter, statement.call.parameters_length, statement.call.parameters) {
-							glog(DEBUG, "| | | ├ parameters:");
-							switch(call_parameter.type) {
-								case CIO_EXPRESSION_NUMBER: {
-									glogf(DEBUG, "| | | | ├ %zu", call_parameter.number);
-									break;
-								}
-								case CIO_EXPRESSION_STORAGE: {
-									glogf(DEBUG, "| | | | ├ %s", call_parameter.identifier);
-									break;
-								}
-								case CIO_EXPRESSION_STRING: {
-									glogf(DEBUG, "| | | | ├ \"%s\"", call_parameter.string);
-									break;
-								}
-							}
-						}
-						break;
-					}
-					case CIO_STATEMENT_RETURN: {
-						glog(DEBUG, "| | ├ return");
-						break;
-					}
+			glogf(DEBUG, "├ %s %zu", routine.identifier, routine.parameters);
+			GEN_FOREACH(j, call, routine.calls_length, routine.calls) {
+				glogf(DEBUG, "| ├ call %s", call.identifier);
+				GEN_FOREACH(k, parameter, call.parameters_length, call.parameters) {
+					glogf(DEBUG, "| | ├ %zu", parameter);
 				}
 			}
 		}

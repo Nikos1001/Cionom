@@ -10,3 +10,5 @@
     - Add `cio_glog_column_indicator` to `cionom.c`
   - Add AST and Token list cleanup functions 
     - Ensure they work even after failure to completely tokenize/parse (User calls on failure)
+- Specification
+  - Rewrite semantics for new stuff
