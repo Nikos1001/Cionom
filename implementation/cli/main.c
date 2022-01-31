@@ -74,13 +74,17 @@ int main(const int argc, const char* const* const argv) {
 	cio_token_t* tokens = NULL;
 	size_t tokens_length = 0;
 	error = cio_tokenize(source, source_length, &tokens, &tokens_length);
+	if(error) {
+		gen_error_t free_error = gfree(tokens);
+		GEN_REQUIRE_NO_ERROR(free_error);
+	}
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.debug) {
 		GEN_FOREACH_PTR(i, token, tokens_length, tokens) {
 			switch(token->type) {
 				case CIO_TOKEN_IDENTIFIER: {
-					glog(DEBUG, "CIO_TOKEN_IDENTIFIER");
+					glogf(DEBUG, "%zu. CIO_TOKEN_IDENTIFIER", i);
 					break;
 				}
 				case CIO_TOKEN_BLOCK: {
@@ -88,7 +92,7 @@ int main(const int argc, const char* const* const argv) {
 					break;
 				}
 				case CIO_TOKEN_NUMBER: {
-					glog(DEBUG, "CIO_TOKEN_NUMBER");
+					glogf(DEBUG, "%zu. CIO_TOKEN_NUMBER", i);
 					break;
 				}
 			}
@@ -97,6 +101,12 @@ int main(const int argc, const char* const* const argv) {
 
 	cio_program_t program = {0};
 	error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
+	if(error) {
+		gen_error_t free_error = cio_free_program(&program);
+		GEN_REQUIRE_NO_ERROR(free_error);
+		free_error = gfree(tokens);
+		GEN_REQUIRE_NO_ERROR(free_error);
+	}
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.debug) {
@@ -111,4 +121,11 @@ int main(const int argc, const char* const* const argv) {
 			}
 		}
 	}
+
+	error = cio_free_program(&program);
+	GEN_REQUIRE_NO_ERROR(error);
+	error = gfree(tokens);
+	GEN_REQUIRE_NO_ERROR(error);
+	error = gfree(source);
+	GEN_REQUIRE_NO_ERROR(error);
 }
