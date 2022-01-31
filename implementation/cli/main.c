@@ -88,7 +88,7 @@ int main(const int argc, const char* const* const argv) {
 					break;
 				}
 				case CIO_TOKEN_BLOCK: {
-					glog(DEBUG, "CIO_TOKEN_BLOCK");
+					glog(DEBUG, "%zu. CIO_TOKEN_BLOCK");
 					break;
 				}
 				case CIO_TOKEN_NUMBER: {

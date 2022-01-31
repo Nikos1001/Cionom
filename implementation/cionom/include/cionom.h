@@ -25,6 +25,8 @@ typedef struct {
     char* identifier;
     size_t parameters_length;
     size_t* parameters;
+
+    const cio_token_t* token;
 } cio_call_t;
 
 typedef struct {
@@ -33,6 +35,8 @@ typedef struct {
     size_t calls_length;
     cio_call_t* calls;
     bool external;
+
+    const cio_token_t* token;
 } cio_routine_t;
 
 typedef struct {
@@ -44,14 +48,8 @@ GEN_ERRORABLE cio_parse(const cio_token_t* const restrict tokens, const size_t t
 GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
 
 typedef struct {
-    unsigned char* buffer;
-    size_t size;
-    size_t alignment;
-} cio_value_t;
-
-typedef struct {
-    cio_value_t* contents;
-    size_t contents_length;
+    size_t* stack;
+    size_t stack_length;
 } cio_frame_t;
 
 typedef struct {

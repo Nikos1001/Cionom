@@ -40,6 +40,7 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 		error = grealloc((void**) &out_program->routines, out_program->routines_length, ++out_program->routines_length, sizeof(cio_routine_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 		cio_routine_t* const routine = &out_program->routines[out_program->routines_length - 1];
+		routine->token = token;
 		error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &routine->identifier);
 		GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
 		GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, 1);
@@ -62,6 +63,7 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			error = grealloc((void**) &routine->calls, routine->calls_length, ++routine->calls_length, sizeof(cio_call_t));
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 			cio_call_t* const call = &routine->calls[routine->calls_length - 1];
+			call->token = token;
 			error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &call->identifier);
 			GEN_ERROR_OUT_IF(error, "`gen_string_duplicate` failed");
 			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, 1);
@@ -75,6 +77,36 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			}
 		}
 	}
+
+	GEN_ALL_OK;
+}
+
+#define gfree_if(ptr) \
+	do { \
+		if(ptr) { \
+			error = gfree(ptr); \
+			GEN_ERROR_OUT_IF(error, "`gfree` failed"); \
+			ptr = NULL; \
+		} \
+	} while(0)
+
+gen_error_t cio_free_program(cio_program_t* const restrict program) {
+	GEN_FRAME_BEGIN(cio_free_program);
+
+	GEN_INTERNAL_BASIC_PARAM_CHECK(program);
+
+	gen_error_t error = GEN_OK;
+
+	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
+		gfree_if(routine->identifier);
+		GEN_FOREACH_PTR(j, call, routine->calls_length, routine->calls) {
+			gfree_if(call->identifier);
+			gfree_if(call->parameters);
+		}
+		gfree_if(routine->calls);
+	}
+	gfree_if(program->routines);
+	program->routines_length = 0;
 
 	GEN_ALL_OK;
 }
