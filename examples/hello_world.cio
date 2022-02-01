@@ -22,7 +22,7 @@ alloc 2
 main 0
 :
     storage
-    alloc 0 13
+    alloc 0 14
 
     copy*[+]= 0 0 72
     copy*[+]= 0 1 101
@@ -37,6 +37,7 @@ main 0
     copy*[+]= 0 10 108
     copy*[+]= 0 11 100
     copy*[+]= 0 12 33
+    copy*[+]= 0 13 0
 
     print* 0
 :
