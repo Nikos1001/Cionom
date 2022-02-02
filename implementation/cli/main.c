@@ -133,6 +133,10 @@ int main(const int argc, const char* const* const argv) {
 		free_error = gfree(tokens);
 		GEN_REQUIRE_NO_ERROR(free_error);
 	}
+	GEN_REQUIRE_NO_ERROR(error);
+
+	const size_t symbol_table_length = *(size_t*) bytecode;
+	glogf(DEBUG, "Syms: %zu", symbol_table_length);
 
 	error = cio_free_program(&program);
 	GEN_REQUIRE_NO_ERROR(error);
