@@ -122,6 +122,18 @@ int main(const int argc, const char* const* const argv) {
 		}
 	}
 
+	uint8_t* bytecode = NULL;
+	size_t bytecode_length = 0;
+	error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
+	if(error) {
+		gen_error_t free_error = gfree(bytecode);
+		GEN_REQUIRE_NO_ERROR(free_error);
+		free_error = cio_free_program(&program);
+		GEN_REQUIRE_NO_ERROR(free_error);
+		free_error = gfree(tokens);
+		GEN_REQUIRE_NO_ERROR(free_error);
+	}
+
 	error = cio_free_program(&program);
 	GEN_REQUIRE_NO_ERROR(error);
 	error = gfree(tokens);
