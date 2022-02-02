@@ -66,7 +66,7 @@ int main(const int argc, const char* const* const argv) {
 	char* source = NULL;
 	error = gzalloc((void**) &source, source_length + 1, sizeof(char));
 	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_handle_read((uint8_t*) source, &source_handle, 0, source_length);
+	error = gen_handle_read((unsigned char*) source, &source_handle, 0, source_length);
 	GEN_REQUIRE_NO_ERROR(error);
 	error = gen_handle_close(&source_handle);
 	GEN_REQUIRE_NO_ERROR(error);
@@ -122,7 +122,7 @@ int main(const int argc, const char* const* const argv) {
 		}
 	}
 
-	uint8_t* bytecode = NULL;
+	unsigned char* bytecode = NULL;
 	size_t bytecode_length = 0;
 	error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
 	if(error) {

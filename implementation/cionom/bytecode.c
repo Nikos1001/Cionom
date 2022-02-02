@@ -9,18 +9,18 @@ Program Header
 
 Symbol Table Header
 ==
-|0 Number of entries|64
+|0 Number of entries|`size_t` width
 
 Symbol Table Entry
 ==
-|0 External |1 Offset of routine|64
+|0 External|1 Offset of routine into code section|`size_t` width
 
 Code
 ===
 
 Opcodes
 ==
-All opcodes and operands are 64 bits in width
+All opcodes and operands are the width of `size_t`
 
 Push: 0x0
     Pushes a new entry onto the local stack frame with a value of 0
@@ -40,7 +40,7 @@ typedef enum
 	CIO_BYTECODE_OPERATION_CALL
 } cio_bytecode_operation_t;
 
-gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, uint8_t** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, __unused const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
+gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, __unused const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_DIAG_REGION_BEGIN
 #pragma clang diagnostic ignored "-Wcast-align"
 
@@ -56,13 +56,13 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, uint8
 	// Clang fails to check alignment properly when delivering -Wcast-align
 
 	const size_t program_header_length = sizeof(size_t) + (program->routines_length * sizeof(size_t));
-	alignas(size_t) uint8_t* program_header = NULL;
-	gen_error_t error = gzalloc_aligned((void**) &program_header, program_header_length, sizeof(uint8_t), alignof(size_t));
+	alignas(size_t) unsigned char* program_header = NULL;
+	gen_error_t error = gzalloc_aligned((void**) &program_header, program_header_length, sizeof(unsigned char), alignof(size_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
 	(*(size_t*) program_header) = program->routines_length;
 
-	__unused alignas(size_t) uint8_t* code = NULL;
+	__unused alignas(size_t) unsigned char* code = NULL;
 
 	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
 		if(routine->external) {
