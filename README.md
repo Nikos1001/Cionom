@@ -5,12 +5,9 @@ Cíonom is a small language intended to be very easy to define (famous last word
 
 The symbols used by the language are as follows:
 ```
-{}<>;,
+:
 ```
-And the keywords:
-```
-return storage alignment
-```
+And no keywords!
 
 Its core grammar is designed non-self-referentially meaning it can be described in a single sentence or programs validated with a single regex.
 
