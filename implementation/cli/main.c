@@ -135,8 +135,20 @@ int main(const int argc, const char* const* const argv) {
 	}
 	GEN_REQUIRE_NO_ERROR(error);
 
-	const size_t symbol_table_length = *(size_t*) bytecode;
-	glogf(DEBUG, "Syms: %zu", symbol_table_length);
+	gen_filesystem_handle_t bytecode_file = {0};
+	bool exists = false;
+	error = gen_path_exists("test.ibc", &exists);
+	GEN_REQUIRE_NO_ERROR(error);
+	if(!exists) {
+		error = gen_path_create_file("test.ibc");
+		GEN_REQUIRE_NO_ERROR(error);
+	}
+	error = gen_handle_open(&bytecode_file, "test.ibc");
+	GEN_REQUIRE_NO_ERROR(error);
+	error = gen_handle_write(&bytecode_file, bytecode_length, bytecode);
+	GEN_REQUIRE_NO_ERROR(error);
+	error = gen_handle_close(&bytecode_file);
+	GEN_REQUIRE_NO_ERROR(error);
 
 	error = cio_free_program(&program);
 	GEN_REQUIRE_NO_ERROR(error);
