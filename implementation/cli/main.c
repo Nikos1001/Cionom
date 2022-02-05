@@ -8,18 +8,35 @@
 typedef struct {
 	const char* file;
 	bool debug;
+	bool emit_bytecode;
+	const char* bytecode_file;
 } cio_cli_args_t;
 
-static const char* const restrict switches[] = {"debug"};
+static const char* const restrict switches[] = {"debug", "emit-bytecode"};
 
 static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
+	GEN_FRAME_BEGIN(cio_cli_arg_handler);
+
 	cio_cli_args_t* const args = passthrough;
 
 	switch(type) {
 		case GEN_ARG_LONG: {
 			switch(arg_n) {
 				case 0: {
+					if(parameter) {
+						glogf(FATAL, "`%s` does not take a parameter", switches[arg_n]);
+						GEN_REQUIRE_NO_REACH;
+					}
 					args->debug = true;
+					break;
+				}
+				case 1: {
+					if(!parameter) {
+						glogf(FATAL, "`%s` expected output file", switches[arg_n]);
+						GEN_REQUIRE_NO_REACH;
+					}
+					args->emit_bytecode = true;
+					args->bytecode_file = parameter;
 					break;
 				}
 			}
@@ -74,10 +91,6 @@ int main(const int argc, const char* const* const argv) {
 	cio_token_t* tokens = NULL;
 	size_t tokens_length = 0;
 	error = cio_tokenize(source, source_length, &tokens, &tokens_length);
-	if(error) {
-		gen_error_t free_error = gfree(tokens);
-		GEN_REQUIRE_NO_ERROR(free_error);
-	}
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.debug) {
@@ -101,12 +114,6 @@ int main(const int argc, const char* const* const argv) {
 
 	cio_program_t program = {0};
 	error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
-	if(error) {
-		gen_error_t free_error = cio_free_program(&program);
-		GEN_REQUIRE_NO_ERROR(free_error);
-		free_error = gfree(tokens);
-		GEN_REQUIRE_NO_ERROR(free_error);
-	}
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.debug) {
@@ -125,31 +132,27 @@ int main(const int argc, const char* const* const argv) {
 	unsigned char* bytecode = NULL;
 	size_t bytecode_length = 0;
 	error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
-	if(error) {
-		gen_error_t free_error = gfree(bytecode);
-		GEN_REQUIRE_NO_ERROR(free_error);
-		free_error = cio_free_program(&program);
-		GEN_REQUIRE_NO_ERROR(free_error);
-		free_error = gfree(tokens);
-		GEN_REQUIRE_NO_ERROR(free_error);
-	}
 	GEN_REQUIRE_NO_ERROR(error);
 
-	gen_filesystem_handle_t bytecode_file = {0};
-	bool exists = false;
-	error = gen_path_exists("test.ibc", &exists);
-	GEN_REQUIRE_NO_ERROR(error);
-	if(!exists) {
-		error = gen_path_create_file("test.ibc");
+	if(args.emit_bytecode) {
+		gen_filesystem_handle_t bytecode_file = {0};
+		bool exists = false;
+		error = gen_path_exists(args.bytecode_file, &exists);
+		GEN_REQUIRE_NO_ERROR(error);
+		if(!exists) {
+			error = gen_path_create_file(args.bytecode_file);
+			GEN_REQUIRE_NO_ERROR(error);
+		}
+		error = gen_handle_open(&bytecode_file, args.bytecode_file);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = gen_handle_write(&bytecode_file, bytecode_length, bytecode);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = gen_handle_close(&bytecode_file);
 		GEN_REQUIRE_NO_ERROR(error);
 	}
-	error = gen_handle_open(&bytecode_file, "test.ibc");
-	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_handle_write(&bytecode_file, bytecode_length, bytecode);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_handle_close(&bytecode_file);
-	GEN_REQUIRE_NO_ERROR(error);
 
+	error = gfree(bytecode);
+	GEN_REQUIRE_NO_ERROR(error);
 	error = cio_free_program(&program);
 	GEN_REQUIRE_NO_ERROR(error);
 	error = gfree(tokens);

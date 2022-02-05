@@ -64,38 +64,36 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
 
-	(void) source_length;
-
 	const size_t program_header_length = program->routines_length + 1;
-	size_t* program_header = NULL;
-	gen_error_t error = gzalloc((void**) &program_header, program_header_length, sizeof(size_t));
+	size_t bytecode_length = program_header_length;
+	size_t* bytecode = NULL;
+	bytecode = NULL;
+	gen_error_t error = gzalloc((void**) &bytecode, bytecode_length, sizeof(size_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
-	program_header[0] = program->routines_length;
+	bytecode[0] = program->routines_length;
 
-	size_t code_length = 0;
-	size_t* code = NULL;
 	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
 		if(routine->external) {
-			program_header[i + 1] = SIZE_MAX;
+			bytecode[i + 1] = SIZE_MAX;
 			continue;
 		}
-		program_header[i + 1] = code_length;
+		bytecode[i + 1] = bytecode_length;
 
 		size_t stride = routine->calls_length * 2;
 		GEN_FOREACH_PTR(j, stride_check_call, routine->calls_length, routine->calls) {
 			stride += (stride_check_call->parameters_length * 2);
 		}
-		error = grealloc((void**) &code, code_length, code_length + stride, sizeof(unsigned char));
+		error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + stride, sizeof(size_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
-		size_t insertion_offset = code_length;
+		size_t insertion_offset = bytecode_length;
 		GEN_FOREACH_PTR(j, call, routine->calls_length, routine->calls) {
 			GEN_FOREACH_PTR(k, parameter, call->parameters_length, call->parameters) {
-				code[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
-				code[insertion_offset++] = *parameter;
+				bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
+				bytecode[insertion_offset++] = *parameter;
 			}
-			code[insertion_offset++] = CIO_BYTECODE_OPERATION_CALL;
+			bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_CALL;
 
 			bool equal = false;
 			size_t called_index = 0;
@@ -117,23 +115,13 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 				glogf(FATAL, "Invalid AST: Unknown routine identifier %s in %s:%zu:%zu", call->identifier, source_file, line, column);
 				GEN_ERROR_OUT(GEN_BAD_CONTENT, "Bytecode generation failed");
 			}
-			code[insertion_offset++] = called_index;
+			bytecode[insertion_offset++] = called_index;
 		}
-		code_length += stride;
+		bytecode_length += stride;
 	}
 
-	*out_bytecode_length = (program_header_length + code_length) * sizeof(size_t);
-	error = gzalloc((void**) out_bytecode, *out_bytecode_length, sizeof(unsigned char));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
-	memcpy(*out_bytecode, program_header, program_header_length * sizeof(size_t));
-	GEN_ERROR_OUT_IF_ERRNO(memcpy, errno);
-	memcpy(*out_bytecode + (program_header_length * sizeof(size_t)), code, code_length * sizeof(size_t));
-	GEN_ERROR_OUT_IF_ERRNO(memcpy, errno);
-
-	error = gfree(program_header);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
-	error = gfree(code);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	*out_bytecode_length = bytecode_length * sizeof(size_t);
+	*out_bytecode = (unsigned char*) bytecode;
 
 	GEN_ALL_OK;
 }
