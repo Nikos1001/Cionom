@@ -1,22 +1,6 @@
 storage 0
-storage= 1
-storage=*[] 1
-storage=*[+] 2
-
-copy= 2
-copy=*[] 2
-copy=*[] 2
-copy*[]=*[] 2
-copy=*[+] 3
 copy*[+]= 3
-copy*[+]=*[+] 4
-
-print 1
-print*[] 1
-print*[+] 2
 print* 1
-print*+ 2
-
 alloc 2
 
 main 0

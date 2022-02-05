@@ -37,7 +37,8 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 	GEN_FOREACH_PTR(offset, token, tokens_length, tokens) {
 		error = cio_internal_parse_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
 		GEN_ERROR_OUT_IF(error, "`cio_internal_parse_expect` failed");
-		error = grealloc((void**) &out_program->routines, out_program->routines_length, ++out_program->routines_length, sizeof(cio_routine_t));
+		error = grealloc((void**) &out_program->routines, out_program->routines_length, out_program->routines_length + 1, sizeof(cio_routine_t));
+		++out_program->routines_length;
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 		cio_routine_t* const routine = &out_program->routines[out_program->routines_length - 1];
 		routine->token = token;
@@ -60,7 +61,8 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 		while(token->type != CIO_TOKEN_BLOCK) {
 			error = cio_internal_parse_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
 			GEN_ERROR_OUT_IF(error, "`cio_internal_parse_expect` failed");
-			error = grealloc((void**) &routine->calls, routine->calls_length, ++routine->calls_length, sizeof(cio_call_t));
+			error = grealloc((void**) &routine->calls, routine->calls_length, routine->calls_length + 1, sizeof(cio_call_t));
+			++routine->calls_length;
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 			cio_call_t* const call = &routine->calls[routine->calls_length - 1];
 			call->token = token;
@@ -69,7 +71,8 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 			GEN_FOREACH_PTR_ADVANCE(offset, token, tokens_length, tokens, 1);
 
 			while(token->type == CIO_TOKEN_NUMBER) {
-				error = grealloc((void**) &call->parameters, call->parameters_length, ++call->parameters_length, sizeof(size_t));
+				error = grealloc((void**) &call->parameters, call->parameters_length, call->parameters_length + 1, sizeof(size_t));
+				++call->parameters_length;
 				GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 				error = gen_string_number(source + token->offset, source_length - token->offset, token->length, &call->parameters[call->parameters_length - 1]);
 				GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");

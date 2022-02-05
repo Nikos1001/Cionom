@@ -48,3 +48,16 @@ GEN_ERRORABLE cio_parse(const cio_token_t* const restrict tokens, const size_t t
 GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
 
 GEN_ERRORABLE cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+
+typedef struct {
+    size_t base;
+    bool reserve : 1;
+    size_t height : (CHAR_BIT * sizeof(size_t)) - 1;
+} cio_frame_t;
+
+typedef struct {
+    size_t* stack;
+    cio_frame_t* frames;
+} cio_vm_t;
+
+GEN_ERRORABLE cio_execute_bytecode(const unsigned char* const restrict bytecode);

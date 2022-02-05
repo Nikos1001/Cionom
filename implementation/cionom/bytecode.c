@@ -3,52 +3,6 @@
 
 #include "include/cionom.h"
 
-/*
-Program Header
-===
-
-Symbol Table Header
-==
-|0 Number of entries|`size_t` width
-
-Symbol Table Entry
-==
-|0 External|1 Offset of routine into code section|`size_t` width
-
-Code
-===
-
-Opcodes
-==
-All opcodes and operands are the width of `size_t`
-
-Push: 0x0 [imm]
-    Pushes a new entry onto the local stack frame with the value of [imm]
-Pop: 0x1
-    Removes a value from the local stack frame
-Call: 0x2 [imm]
-    Pushes a stack frame and jumps execution to the routine referred to by [imm]
-*/
-
-/*
-Generation
-===
-
-`foo 3, 4, 0`
-
-Where `foo` is index 0 in the symbol table would become the following bytecode:
-
-```
-push 3
-push 4
-push 0
-call 0
-pop
-pop
-pop
-```
-*/
-
 typedef enum
 {
 	CIO_BYTECODE_OPERATION_PUSH = 0xAA,
@@ -64,21 +18,36 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
 	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
 
-	const size_t program_header_length = program->routines_length + 1;
-	size_t bytecode_length = program_header_length;
+	size_t bytecode_length = 1;
 	size_t* bytecode = NULL;
-	bytecode = NULL;
 	gen_error_t error = gzalloc((void**) &bytecode, bytecode_length, sizeof(size_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
 	bytecode[0] = program->routines_length;
 
 	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
+		error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + 1, sizeof(size_t));
+		++bytecode_length;
+		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+
 		if(routine->external) {
-			bytecode[i + 1] = SIZE_MAX;
+			bytecode[bytecode_length - 1] = SIZE_MAX;
+
+			size_t identifier_length = 0;
+			error = gen_string_length(routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);
+			++identifier_length;
+			GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+			const size_t identifier_aligned_length = (size_t) (ceil((double) identifier_length / (double) sizeof(size_t)));
+			error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + identifier_aligned_length + 1, sizeof(size_t));
+			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+			bytecode_length += identifier_aligned_length;
+
+			error = gen_string_copy((char*) (bytecode + (bytecode_length - (identifier_aligned_length))), identifier_length + 1, routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND);
+			GEN_ERROR_OUT_IF(error, "`gen_string_copy` failed");
+
 			continue;
 		}
-		bytecode[i + 1] = bytecode_length;
+		bytecode[bytecode_length - 1] = bytecode_length;
 
 		size_t stride = routine->calls_length * 2;
 		GEN_FOREACH_PTR(j, stride_check_call, routine->calls_length, routine->calls) {
