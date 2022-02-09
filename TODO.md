@@ -12,5 +12,7 @@
     - Ensure they work even after failure to completely tokenize/parse (User calls on failure)
   - Bytecode generation is disgusting
     - Especially with allocations
+  - Add comments and docstrings!
+  - Hooking into external resolution from user code
 - Specification
   - Rewrite semantics for new stuff

@@ -56,8 +56,11 @@ typedef struct {
 } cio_frame_t;
 
 typedef struct {
+    size_t stack_length;
     size_t* stack;
     cio_frame_t* frames;
 } cio_vm_t;
 
-GEN_ERRORABLE cio_execute_bytecode(const unsigned char* const restrict bytecode);
+typedef gen_error_t (*cio_routine_function_t)(cio_vm_t* const restrict);
+
+GEN_ERRORABLE cio_execute_bytecode(const unsigned char* const restrict bytecode, const size_t stack_length, cio_vm_t* const restrict out_instance, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
