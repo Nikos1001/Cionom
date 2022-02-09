@@ -3,6 +3,7 @@
 
 #include <gencommon.h>
 #include <genstring.h>
+#include <gendl.h>
 
 GEN_ERRORABLE cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length);
 GEN_ERRORABLE cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length);
@@ -49,18 +50,27 @@ GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
 
 GEN_ERRORABLE cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
 
-typedef struct {
-    size_t base;
-    bool reserve : 1;
-    size_t height : (CHAR_BIT * sizeof(size_t)) - 1;
-} cio_frame_t;
-
-typedef struct {
-    size_t stack_length;
-    size_t* stack;
-    cio_frame_t* frames;
-} cio_vm_t;
+typedef struct cio_vm_t cio_vm_t;
 
 typedef gen_error_t (*cio_routine_function_t)(cio_vm_t* const restrict);
 
-GEN_ERRORABLE cio_execute_bytecode(const unsigned char* const restrict bytecode, const size_t stack_length, cio_vm_t* const restrict out_instance);
+typedef struct {
+    size_t base;
+    size_t height;
+    size_t execution_offset;
+} cio_frame_t;
+
+typedef struct cio_vm_t {
+    size_t stack_length;
+    size_t* stack;
+    size_t frames_length;
+    cio_frame_t* frames;
+    size_t callables_length;
+    cio_routine_function_t* callables;
+    size_t* callables_offsets;
+    size_t bytecode_length;
+    const size_t* bytecode;
+    gen_dylib_t external_lib;
+} cio_vm_t;
+
+GEN_ERRORABLE cio_execute_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);

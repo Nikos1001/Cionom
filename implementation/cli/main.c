@@ -152,7 +152,7 @@ int main(const int argc, const char* const* const argv) {
 	}
 
 	cio_vm_t vm = {0};
-	error = cio_execute_bytecode(bytecode, 1024, &vm);
+	error = cio_execute_bytecode(bytecode, bytecode_length, 1024, &vm);
 	GEN_REQUIRE_NO_ERROR(error);
 
 	error = gfree(bytecode);

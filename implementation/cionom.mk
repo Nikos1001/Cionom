@@ -8,6 +8,10 @@ CIONOM_EXEC_SOURCES = $(wildcard $(CIONOM_ROOT_DIR)/implementation/cli/*.c)
 CIONOM_EXEC_OBJECTS = $(CIONOM_EXEC_SOURCES:.c=.o)
 CIONOM_EXEC = $(CIONOM_ROOT_DIR)/cionom-cli$(EXECUTABLE_SUFFIX)
 
+CIONOM_EXTERNAL_SOURCES = $(wildcard $(CIONOM_ROOT_DIR)/implementation/external/*.c)
+CIONOM_EXTERNAL_OBJECTS = $(CIONOM_EXTERNAL_SOURCES:.c=.o)
+CIONOM_EXTERNAL = lib/$(LIB_PREFIX)cionom-external$(DYNAMIC_LIB_SUFFIX)
+
 CIONOM_LIB_CFLAGS = $(GEN_CORE_CFLAGS) -I$(CIONOM_ROOT_DIR)/implementation/cionom/include
 CIONOM_LIB_LFLAGS = $(GEN_CORE_LFLAGS) -lcionom
 
@@ -15,7 +19,7 @@ build_message_cionom:
 	@$(ECHO) "$(SECTION_PREFIX) Cíonom"
 	@$(ECHO) "$(INFO_PREFIX) Cíonom Reference Implementation"
 
-cionom: build_message_cionom $(CIONOM_EXEC) ### @Cíonom Builds the Cíonom reference implementation
+cionom: build_message_cionom $(CIONOM_EXEC) $(CIONOM_EXTERNAL) ### @Cíonom Builds the Cíonom reference implementation
 
 $(CIONOM_LIB): CFLAGS = $(GEN_CORE_CFLAGS)
 $(CIONOM_LIB): LFLAGS = -Llib $(GEN_CORE_LFLAGS)
@@ -27,10 +31,17 @@ $(CIONOM_EXEC): LFLAGS = -Llib $(CIONOM_LIB_LFLAGS)
 $(CIONOM_EXEC): $(CIONOM_EXEC_OBJECTS)
 $(CIONOM_EXEC_OBJECTS): $(CIONOM_LIB)
 
+$(CIONOM_EXTERNAL): CFLAGS = $(CIONOM_LIB_CFLAGS)
+$(CIONOM_EXTERNAL): LFLAGS = -Llib $(CIONOM_LIB_LFLAGS)
+$(CIONOM_EXTERNAL): $(CIONOM_EXTERNAL_OBJECTS)
+$(CIONOM_EXTERNAL_OBJECTS): $(CIONOM_LIB)
+
 clean_cionom:
 	@$(ECHO) "$(ACTION_PREFIX)"
 	-rm $(CIONOM_LIB_OBJECTS)
 	-rm $(CIONOM_LIB)
 	-rm $(CIONOM_EXEC_OBJECTS)
 	-rm $(CIONOM_EXEC)
+	-rm $(CIONOM_EXTERNAL_OBJECTS)
+	-rm $(CIONOM_EXTERNAL)
 	@$(ECHO) "$(ACTION_SUFFIX)"

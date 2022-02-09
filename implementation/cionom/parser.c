@@ -17,7 +17,7 @@ static __nodiscard gen_error_t cio_internal_parse_expect(const cio_token_t* cons
 		GEN_ERROR_OUT_IF(error, "`cio_line_from_offset` failed");
 		error = cio_column_from_offset(token->offset, &column, source, source_length);
 		GEN_ERROR_OUT_IF(error, "`cio_column_from_offset` failed");
-		glogf(FATAL, "Malformed program: Unexpected token in %s:%zu:%zu", source_file, line, column);
+		glogf(ERROR, "Malformed program: Unexpected token in %s:%zu:%zu", source_file, line, column);
 		GEN_ERROR_OUT(GEN_BAD_CONTENT, "Parsing failed");
 	}
 

@@ -81,7 +81,7 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 				GEN_ERROR_OUT_IF(error, "`cio_line_from_offset` failed");
 				error = cio_column_from_offset(call->token->offset, &column, source, source_length);
 				GEN_ERROR_OUT_IF(error, "`cio_column_from_offset` failed");
-				glogf(FATAL, "Invalid AST: Unknown routine identifier %s in %s:%zu:%zu", call->identifier, source_file, line, column);
+				glogf(ERROR, "Invalid AST: Unknown routine identifier %s in %s:%zu:%zu", call->identifier, source_file, line, column);
 				GEN_ERROR_OUT(GEN_BAD_CONTENT, "Bytecode generation failed");
 			}
 			bytecode[insertion_offset++] = called_index;
