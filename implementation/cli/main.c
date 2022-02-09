@@ -151,6 +151,10 @@ int main(const int argc, const char* const* const argv) {
 		GEN_REQUIRE_NO_ERROR(error);
 	}
 
+	cio_vm_t vm = {0};
+	error = cio_execute_bytecode(bytecode, 1024, &vm);
+	GEN_REQUIRE_NO_ERROR(error);
+
 	error = gfree(bytecode);
 	GEN_REQUIRE_NO_ERROR(error);
 	error = cio_free_program(&program);
