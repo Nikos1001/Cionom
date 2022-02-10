@@ -2,6 +2,7 @@
 
 - Github
   - Set up code scanning
+  - Set up CI
   - Pages for documentation
     - Autogenerate documentation
   - Set up all community guidelines stuff
@@ -23,5 +24,7 @@
     - Fixed width types
     - Encode instruction type as single bit
       - Use 7 bits to encode offset into routine table/constant pool
+  - Expose frame ops, push, and dispatch call to public API
+  - Overall reduce `grealloc`s and `gzalloc`s
 - Specification
   - Rewrite semantics for new stuff
