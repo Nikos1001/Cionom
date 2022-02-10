@@ -23,4 +23,21 @@ gen_error_t copy_value_to_indexed(cio_vm_t* const restrict vm) {
 	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`copy*[+]=` is not implemented yet :^)");
 }
 
+#define print_pointer print__cionom_mangled_grapheme_asterisk
+gen_error_t print_pointer(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(print_pointer);
+
+	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+
+	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`print*` is not implemented yet :^)");
+}
+
+gen_error_t alloc(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(alloc);
+
+	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+
+	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`alloc` is not implemented yet :^)");
+}
+
 GEN_DIAG_REGION_END
