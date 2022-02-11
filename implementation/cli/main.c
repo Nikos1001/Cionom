@@ -10,9 +10,12 @@ typedef struct {
 	bool debug;
 	bool emit_bytecode;
 	const char* bytecode_file;
+	bool execute_bytecode;
+	size_t routine;
+	size_t stack_length;
 } cio_cli_args_t;
 
-static const char* const restrict switches[] = {"debug", "emit-bytecode"};
+static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length"};
 
 static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
 	GEN_FRAME_BEGIN(cio_cli_arg_handler);
@@ -35,9 +38,35 @@ static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, c
 						glogf(FATAL, "`%s` expected output file", switches[arg_n]);
 						GEN_REQUIRE_NO_REACH;
 					}
+					if(args->execute_bytecode) {
+						glog(FATAL, "Cannot both emit and execute bytecode");
+						GEN_REQUIRE_NO_REACH;
+					}
 					args->emit_bytecode = true;
 					args->bytecode_file = parameter;
 					break;
+				}
+				case 2: {
+					if(!parameter) {
+						glogf(FATAL, "`%s` expected routine index", switches[arg_n]);
+						GEN_REQUIRE_NO_REACH;
+					}
+					if(args->emit_bytecode) {
+						glog(FATAL, "Cannot both emit and execute bytecode");
+						GEN_REQUIRE_NO_REACH;
+					}
+					args->execute_bytecode = true;
+					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->routine);
+					GEN_REQUIRE_NO_ERROR(error);
+					break;
+				}
+				case 3: {
+					if(!parameter) {
+						glogf(FATAL, "`%s` expected stack depth", switches[arg_n]);
+						GEN_REQUIRE_NO_REACH;
+					}
+					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->stack_length);
+					GEN_REQUIRE_NO_ERROR(error);
 				}
 			}
 			break;
@@ -69,6 +98,19 @@ int main(const int argc, const char* const* const argv) {
 		glog(FATAL, "No source file specified");
 		GEN_REQUIRE_NO_REACH;
 	}
+	if(!args.emit_bytecode && !args.execute_bytecode) {
+		glog(FATAL, "No operation specified");
+		GEN_REQUIRE_NO_REACH;
+	}
+
+	if(!args.stack_length && args.execute_bytecode) {
+		args.stack_length = 1024;
+		glogf(WARNING, "`--stack-length` not specified, defaulting to %zu", args.stack_length);
+	}
+	else if(args.stack_length && !args.execute_bytecode) {
+		glog(FATAL, "`--stack-length` specified for non-executing operation");
+		GEN_REQUIRE_NO_REACH;
+	}
 
 	size_t filename_length = 0;
 	error = gen_string_length(args.file, GEN_PATH_MAX + 1, GEN_PATH_MAX, &filename_length);
@@ -88,53 +130,21 @@ int main(const int argc, const char* const* const argv) {
 	error = gen_handle_close(&source_handle);
 	GEN_REQUIRE_NO_ERROR(error);
 
-	cio_token_t* tokens = NULL;
-	size_t tokens_length = 0;
-	error = cio_tokenize(source, source_length, &tokens, &tokens_length);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	if(args.debug) {
-		GEN_FOREACH_PTR(i, token, tokens_length, tokens) {
-			switch(token->type) {
-				case CIO_TOKEN_IDENTIFIER: {
-					glogf(DEBUG, "%zu. CIO_TOKEN_IDENTIFIER", i);
-					break;
-				}
-				case CIO_TOKEN_BLOCK: {
-					glogf(DEBUG, "%zu. CIO_TOKEN_BLOCK", i);
-					break;
-				}
-				case CIO_TOKEN_NUMBER: {
-					glogf(DEBUG, "%zu. CIO_TOKEN_NUMBER", i);
-					break;
-				}
-			}
-		}
-	}
-
-	cio_program_t program = {0};
-	error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	if(args.debug) {
-		glogf(DEBUG, "%s", args.file);
-		GEN_FOREACH(i, routine, program.routines_length, program.routines) {
-			glogf(DEBUG, "├ %s %zu", routine.identifier, routine.parameters);
-			GEN_FOREACH(j, call, routine.calls_length, routine.calls) {
-				glogf(DEBUG, "| ├ call %s", call.identifier);
-				GEN_FOREACH(k, parameter, call.parameters_length, call.parameters) {
-					glogf(DEBUG, "| | ├ %zu", parameter);
-				}
-			}
-		}
-	}
-
-	unsigned char* bytecode = NULL;
-	size_t bytecode_length = 0;
-	error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
-	GEN_REQUIRE_NO_ERROR(error);
-
 	if(args.emit_bytecode) {
+		cio_token_t* tokens = NULL;
+		size_t tokens_length = 0;
+		error = cio_tokenize(source, source_length, &tokens, &tokens_length);
+		GEN_REQUIRE_NO_ERROR(error);
+
+		cio_program_t program = {0};
+		error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
+		GEN_REQUIRE_NO_ERROR(error);
+
+		unsigned char* bytecode = NULL;
+		size_t bytecode_length = 0;
+		error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
+		GEN_REQUIRE_NO_ERROR(error);
+
 		gen_filesystem_handle_t bytecode_file = {0};
 		bool exists = false;
 		error = gen_path_exists(args.bytecode_file, &exists);
@@ -149,25 +159,27 @@ int main(const int argc, const char* const* const argv) {
 		GEN_REQUIRE_NO_ERROR(error);
 		error = gen_handle_close(&bytecode_file);
 		GEN_REQUIRE_NO_ERROR(error);
+
+		error = gfree(bytecode);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = cio_free_program(&program);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = gfree(tokens);
+		GEN_REQUIRE_NO_ERROR(error);
+	}
+	else if(args.execute_bytecode) {
+		cio_vm_t vm = {0};
+		error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, args.stack_length, &vm);
+		GEN_REQUIRE_NO_ERROR(error);
+
+		error = cio_vm_push_frame(&vm);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = cio_vm_push(&vm);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = cio_vm_dispatch_call(&vm, args.routine, 0);
+		GEN_REQUIRE_NO_ERROR(error);
 	}
 
-	cio_vm_t vm = {0};
-	error = cio_vm_initialize_bytecode(bytecode, bytecode_length, 64, &vm);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	error = cio_vm_push_frame(&vm);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = cio_vm_push(&vm);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = cio_vm_dispatch_call(&vm, 3, 0);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	error = gfree(bytecode);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = cio_free_program(&program);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = gfree(tokens);
-	GEN_REQUIRE_NO_ERROR(error);
 	error = gfree(source);
 	GEN_REQUIRE_NO_ERROR(error);
 }

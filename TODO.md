@@ -16,15 +16,11 @@
   - Add comments and docstrings!
   - Hooking into external resolution from user code
   - Treat `\r` as whitespace
-  - Don't `grealloc` on pushing a new VM frame
-    - Statically allocate based on stack length at startup
-    - No heap operations during VM runtime
-  - Treat `call FF FF FF FF FF FF FF FF` as return
   - Reduce bytecode size
     - Fixed width types
     - Encode instruction type as single bit
       - Use 7 bits to encode offset into routine table/constant pool
-  - Expose frame ops, push, and dispatch call to public API
   - Overall reduce `grealloc`s and `gzalloc`s
+  - Add cleanup function for vm
 - Specification
   - Rewrite semantics for new stuff
