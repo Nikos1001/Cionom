@@ -3,12 +3,6 @@
 
 #include "include/cionom.h"
 
-typedef enum
-{
-	CIO_BYTECODE_OPERATION_PUSH = 0xAA,
-	CIO_BYTECODE_OPERATION_CALL = 0x55
-} cio_bytecode_operation_t;
-
 gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_emit_bytecode);
 
@@ -49,15 +43,20 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 		}
 		bytecode[bytecode_length - 1] = bytecode_length;
 
-		size_t stride = routine->calls_length * 2;
+		size_t stride = (routine->calls_length + 1) * 2;
 		GEN_FOREACH_PTR(j, stride_check_call, routine->calls_length, routine->calls) {
 			stride += (stride_check_call->parameters_length * 2);
 		}
+		stride += (routine->calls_length * 2); // Reserve space
 		error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + stride, sizeof(size_t));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
 		size_t insertion_offset = bytecode_length;
 		GEN_FOREACH_PTR(j, call, routine->calls_length, routine->calls) {
+			// Reserve space
+			bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
+			bytecode[insertion_offset++] = 0;
+
 			GEN_FOREACH_PTR(k, parameter, call->parameters_length, call->parameters) {
 				bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
 				bytecode[insertion_offset++] = *parameter;
@@ -86,6 +85,8 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 			}
 			bytecode[insertion_offset++] = called_index;
 		}
+		bytecode[bytecode_length + stride - 2] = CIO_BYTECODE_OPERATION_CALL;
+		bytecode[bytecode_length + stride - 1] = SIZE_MAX;
 		bytecode_length += stride;
 	}
 

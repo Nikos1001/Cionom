@@ -6,30 +6,24 @@
 GEN_DIAG_REGION_BEGIN
 #pragma clang diagnostic ignored "-Wmissing-prototypes"
 
-gen_error_t storage(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(storage);
+gen_error_t copy__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_right_bracket__cionom_mangled_grapheme_equals(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(copy__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_right_bracket__cionom_mangled_grapheme_equals);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
 
-	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`storage` is not implemented yet :^)");
+	((unsigned char*) vm->stack[vm->frames[vm->frames_used - 2].base + vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 3]])[vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 2]] = (unsigned char) vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 1];
+
+	GEN_ALL_OK;
 }
 
-#define copy_value_to_indexed copy__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_right_bracket__cionom_mangled_grapheme_equals
-gen_error_t copy_value_to_indexed(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(copy_value_to_indexed);
+gen_error_t print__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(print__cionom_mangled_grapheme_asterisk);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
 
-	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`copy*[+]=` is not implemented yet :^)");
-}
+	glogf(INFO, "%s", (char*) vm->stack[vm->frames[vm->frames_used - 2].base + vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 1]]);
 
-#define print_pointer print__cionom_mangled_grapheme_asterisk
-gen_error_t print_pointer(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(print_pointer);
-
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
-
-	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`print*` is not implemented yet :^)");
+	GEN_ALL_OK;
 }
 
 gen_error_t alloc(cio_vm_t* const restrict vm) {
@@ -37,7 +31,10 @@ gen_error_t alloc(cio_vm_t* const restrict vm) {
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
 
-	GEN_ERROR_OUT(GEN_NOT_IMPLEMENTED, "`alloc` is not implemented yet :^)");
+	gen_error_t error = gzalloc((void**) &vm->stack[vm->frames[vm->frames_used - 2].base + vm->frames[vm->frames_used - 2].height - 1], vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 1], 1);
+	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+
+	GEN_ALL_OK;
 }
 
 GEN_DIAG_REGION_END

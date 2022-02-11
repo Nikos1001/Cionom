@@ -101,7 +101,7 @@ int main(const int argc, const char* const* const argv) {
 					break;
 				}
 				case CIO_TOKEN_BLOCK: {
-					glog(DEBUG, "%zu. CIO_TOKEN_BLOCK");
+					glogf(DEBUG, "%zu. CIO_TOKEN_BLOCK", i);
 					break;
 				}
 				case CIO_TOKEN_NUMBER: {
@@ -152,7 +152,14 @@ int main(const int argc, const char* const* const argv) {
 	}
 
 	cio_vm_t vm = {0};
-	error = cio_execute_bytecode(bytecode, bytecode_length, 1024, &vm);
+	error = cio_vm_initialize_bytecode(bytecode, bytecode_length, 64, &vm);
+	GEN_REQUIRE_NO_ERROR(error);
+
+	error = cio_vm_push_frame(&vm);
+	GEN_REQUIRE_NO_ERROR(error);
+	error = cio_vm_push(&vm);
+	GEN_REQUIRE_NO_ERROR(error);
+	error = cio_vm_dispatch_call(&vm, 3, 0);
 	GEN_REQUIRE_NO_ERROR(error);
 
 	error = gfree(bytecode);

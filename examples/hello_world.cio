@@ -1,12 +1,10 @@
-storage 0
 copy*[+]= 3
 print* 1
-alloc 2
+alloc 1
 
 main 0
 :
-    storage
-    alloc 0 14
+    alloc 14
 
     copy*[+]= 0 0 72
     copy*[+]= 0 1 101
