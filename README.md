@@ -1,6 +1,8 @@
 # Cíonom
 *A tiny language*
 
+[![Discord](https://img.shields.io/discord/906624261203058688?color=4e5d94&label=discord&logo=discord&logoColor=4e5d94)](https://discord.gg/sPyaq5SPf8)
+
 Cíonom is a small language intended to be very easy to define (famous last words). In fact it's so simple that it isn't turing complete! Deferring to external code for branching and manipulation of memory.
 
 The symbols used by the language are as follows:
