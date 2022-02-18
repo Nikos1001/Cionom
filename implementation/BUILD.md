@@ -6,4 +6,4 @@ You will need to run `git submodule update --recursive --init` after cloning if 
 
 To build from the Cíonom root directory run `make -Cimplementation/Genstone OVERRIDE_SANDBOX_PROJECT_MODULE=../cionom.mk`. You may use `-j$(nproc)` in order to speed up the build.
 
-This will output a `cionom` library into `implementation/Genstone/lib` and an executable at project root called `cionom-cli`. To run use `LD_LIBRARY_PATH=implementation/Genstone/lib ./cionom-cli.out`.
+This will output a `cionom` library into `implementation/Genstone/lib` and an executable at project root called `cionom-cli`. To run use `LD_LIBRARY_PATH=implementation/Genstone/lib ./cionom-cli.out` or `DYLD_LIBRARY_PATH=implementation/Genstone/lib ./cionom-cli.out` on macOS.
