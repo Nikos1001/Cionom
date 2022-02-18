@@ -86,5 +86,4 @@ GEN_ERRORABLE cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t cal
 GEN_ERRORABLE cio_vm_push_frame(cio_vm_t* const restrict vm);
 GEN_ERRORABLE cio_vm_pop_frame(cio_vm_t* const restrict vm);
 GEN_ERRORABLE cio_vm_push(cio_vm_t* const restrict vm);
-GEN_ERRORABLE cio_vm_execute_routine(cio_vm_t* const restrict vm);
 GEN_ERRORABLE cio_vm_dump_stack(const cio_vm_t* const restrict vm);

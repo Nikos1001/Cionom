@@ -17,7 +17,7 @@ gen_error_t cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
 	}
 
 	glog(DEBUG, "├ Unused");
-	GEN_FOREACH_PTR(i, stack_entry, vm->stack_length - vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height, vm->stack + vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height) {
+	GEN_FOREACH_PTR(i, stack_entry, vm->stack_length - (vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height), vm->stack + vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height) {
 		glogf(DEBUG, "├ 0x%zx: %zu", vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height + i, *stack_entry);
 	}
 
@@ -62,8 +62,8 @@ gen_error_t cio_vm_push(cio_vm_t* const restrict vm) {
 	GEN_ALL_OK;
 }
 
-gen_error_t cio_vm_execute_routine(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_vm_execute_routine);
+static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(cio_internal_vm_execute_routine);
 
 	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
 
@@ -164,7 +164,7 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 			continue;
 		}
 
-		*callable = cio_vm_execute_routine;
+		*callable = cio_internal_vm_execute_routine;
 	}
 
 	GEN_ALL_OK;
