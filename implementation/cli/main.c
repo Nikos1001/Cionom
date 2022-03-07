@@ -17,7 +17,7 @@ typedef struct {
 
 static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length"};
 
-static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
+static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
 	GEN_FRAME_BEGIN(cio_cli_arg_handler);
 
 	cio_cli_args_t* const args = passthrough;
@@ -26,47 +26,27 @@ static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, c
 		case GEN_ARG_LONG: {
 			switch(arg_n) {
 				case 0: {
-					if(parameter) {
-						glogf(FATAL, "`%s` does not take a parameter", switches[arg_n]);
-						GEN_REQUIRE_NO_REACH;
-					}
+					if(parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--debug` does not take a parameter");
 					args->debug = true;
 					break;
 				}
 				case 1: {
-					if(!parameter) {
-						glogf(FATAL, "`%s` expected output file", switches[arg_n]);
-						GEN_REQUIRE_NO_REACH;
-					}
-					if(args->execute_bytecode) {
-						glog(FATAL, "Cannot both emit and execute bytecode");
-						GEN_REQUIRE_NO_REACH;
-					}
+					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--emit-bytecode` does not take a parameter");
 					args->emit_bytecode = true;
 					args->bytecode_file = parameter;
 					break;
 				}
 				case 2: {
-					if(!parameter) {
-						glogf(FATAL, "`%s` expected routine index", switches[arg_n]);
-						GEN_REQUIRE_NO_REACH;
-					}
-					if(args->emit_bytecode) {
-						glog(FATAL, "Cannot both emit and execute bytecode");
-						GEN_REQUIRE_NO_REACH;
-					}
+					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--execute-bytecode` expected routine index");
 					args->execute_bytecode = true;
 					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->routine);
-					GEN_REQUIRE_NO_ERROR(error);
+					GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");
 					break;
 				}
 				case 3: {
-					if(!parameter) {
-						glogf(FATAL, "`%s` expected stack depth", switches[arg_n]);
-						GEN_REQUIRE_NO_REACH;
-					}
+					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--stack-length` expected stack length");
 					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->stack_length);
-					GEN_REQUIRE_NO_ERROR(error);
+					GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");
 				}
 			}
 			break;
@@ -77,13 +57,13 @@ static void cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, c
 		case GEN_ARG_RAW: {
 			if(!args->file)
 				args->file = parameter;
-			else {
-				glog(FATAL, "Passing multiple files is not permitted");
-				GEN_REQUIRE_NO_REACH;
-			}
+			else
+				GEN_ERROR_OUT(GEN_TOO_LONG, "Passing multiple files is not permitted");
 			break;
 		}
 	}
+
+	GEN_ALL_OK;
 }
 
 int main(const int argc, const char* const* const argv) {
@@ -117,17 +97,17 @@ int main(const int argc, const char* const* const argv) {
 	GEN_REQUIRE_NO_ERROR(error);
 
 	gen_filesystem_handle_t source_handle = {0};
-	error = gen_handle_open(&source_handle, args.file);
+	error = gen_filesystem_handle_open(&source_handle, args.file);
 	GEN_REQUIRE_NO_ERROR(error);
 	size_t source_length = 0;
-	error = gen_handle_size(&source_length, &source_handle);
+	error = gen_filesystem_handle_size(&source_length, &source_handle);
 	GEN_REQUIRE_NO_ERROR(error);
 	char* source = NULL;
 	error = gzalloc((void**) &source, source_length + 1, sizeof(char));
 	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_handle_read((unsigned char*) source, &source_handle, 0, source_length);
+	error = gen_filesystem_handle_read((unsigned char*) source, &source_handle, 0, source_length);
 	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_handle_close(&source_handle);
+	error = gen_filesystem_handle_close(&source_handle);
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(args.emit_bytecode) {
@@ -153,11 +133,11 @@ int main(const int argc, const char* const* const argv) {
 			error = gen_path_create_file(args.bytecode_file);
 			GEN_REQUIRE_NO_ERROR(error);
 		}
-		error = gen_handle_open(&bytecode_file, args.bytecode_file);
+		error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
 		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_handle_write(&bytecode_file, bytecode_length, bytecode);
+		error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
 		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_handle_close(&bytecode_file);
+		error = gen_filesystem_handle_close(&bytecode_file);
 		GEN_REQUIRE_NO_ERROR(error);
 
 		error = gfree(bytecode);

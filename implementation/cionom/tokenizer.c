@@ -10,9 +10,9 @@
 gen_error_t cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
 	GEN_FRAME_BEGIN(cio_tokenize);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_tokens);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_tokens_length);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(out_tokens);
+	GEN_NULL_CHECK(out_tokens_length);
 
 	*out_tokens = NULL;
 	*out_tokens_length = 0;

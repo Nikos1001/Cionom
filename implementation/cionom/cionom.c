@@ -6,8 +6,8 @@
 gen_error_t cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length) {
 	GEN_FRAME_BEGIN(cio_line_from_offset);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_line);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(out_line);
 
 	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
 
@@ -21,8 +21,8 @@ gen_error_t cio_line_from_offset(const size_t offset, size_t* const restrict out
 gen_error_t cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length) {
 	GEN_FRAME_BEGIN(cio_column_from_offset);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_column);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(out_column);
 
 	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
 
@@ -102,8 +102,8 @@ static const char cionom_internal_vm_mangled_grapheme_prefix[] = "__cionom_mangl
 gen_error_t cio_resolve_mangled(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
 	GEN_FRAME_BEGIN(cio_resolve_mangled);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(identifier);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_function);
+	GEN_NULL_CHECK(identifier);
+	GEN_NULL_CHECK(out_function);
 
 	size_t identifier_length = 0;
 	gen_error_t error = gen_string_length(identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);

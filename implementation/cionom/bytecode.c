@@ -6,11 +6,11 @@
 gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_emit_bytecode);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(program);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_bytecode);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_bytecode_length);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
+	GEN_NULL_CHECK(program);
+	GEN_NULL_CHECK(out_bytecode);
+	GEN_NULL_CHECK(out_bytecode_length);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(source_file);
 
 	size_t bytecode_length = 1;
 	size_t* bytecode = NULL;

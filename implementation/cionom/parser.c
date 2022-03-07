@@ -6,9 +6,9 @@
 static __nodiscard gen_error_t cio_internal_parse_expect(const cio_token_t* const restrict token, const cio_token_type_t expected, const char* const restrict source, const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_internal_parse_expect);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(token);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
+	GEN_NULL_CHECK(token);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(source_file);
 
 	if(token->type != expected) {
 		size_t line = 0;
@@ -27,10 +27,10 @@ static __nodiscard gen_error_t cio_internal_parse_expect(const cio_token_t* cons
 gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_parse);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(tokens);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_program);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(source_file);
+	GEN_NULL_CHECK(tokens);
+	GEN_NULL_CHECK(out_program);
+	GEN_NULL_CHECK(source);
+	GEN_NULL_CHECK(source_file);
 
 	gen_error_t error = GEN_OK;
 
@@ -96,7 +96,7 @@ gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tok
 gen_error_t cio_free_program(cio_program_t* const restrict program) {
 	GEN_FRAME_BEGIN(cio_free_program);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(program);
+	GEN_NULL_CHECK(program);
 
 	gen_error_t error = GEN_OK;
 

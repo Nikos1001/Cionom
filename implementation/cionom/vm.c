@@ -6,7 +6,7 @@
 gen_error_t cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
 	GEN_FRAME_BEGIN(cio_vm_dump_stack);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 
 	glog(DEBUG, "Stack");
 	GEN_FOREACH_PTR(i, frame, vm->frames_used, vm->frames) {
@@ -27,7 +27,7 @@ gen_error_t cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
 gen_error_t cio_vm_push_frame(cio_vm_t* const restrict vm) {
 	GEN_FRAME_BEGIN(cio_vm_push_frame);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 
 	if(vm->frames_used >= vm->frames_length) GEN_ERROR_OUT(GEN_OUT_OF_SPACE, "No unused frames available to push");
 	if(vm->frames_used) vm->frames[vm->frames_used].base = vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height;
@@ -39,7 +39,7 @@ gen_error_t cio_vm_push_frame(cio_vm_t* const restrict vm) {
 gen_error_t cio_vm_pop_frame(cio_vm_t* const restrict vm) {
 	GEN_FRAME_BEGIN(cio_vm_pop_frame);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 
 	if(!vm->frames_used) GEN_ERROR_OUT(GEN_BAD_OPERATION, "Attemping to pop when no stack frames are active");
 	--vm->frames_used;
@@ -50,7 +50,7 @@ gen_error_t cio_vm_pop_frame(cio_vm_t* const restrict vm) {
 gen_error_t cio_vm_push(cio_vm_t* const restrict vm) {
 	GEN_FRAME_BEGIN(cio_vm_push);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 	if(!vm->frames_used) GEN_ERROR_OUT(GEN_NO_SUCH_OBJECT, "No frame available to push into");
 
 	if(vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height < vm->stack_length)
@@ -65,7 +65,7 @@ gen_error_t cio_vm_push(cio_vm_t* const restrict vm) {
 static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
 	GEN_FRAME_BEGIN(cio_internal_vm_execute_routine);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 
 	gen_error_t error = GEN_OK;
 
@@ -101,7 +101,7 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 gen_error_t cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc) {
 	GEN_FRAME_BEGIN(cio_vm_dispatch_call);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(vm);
+	GEN_NULL_CHECK(vm);
 
 	if(callable >= vm->callables_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`callable` was greater than `vm->callables_length`");
 
@@ -123,9 +123,9 @@ gen_error_t cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t calla
 gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
 	GEN_FRAME_BEGIN(cio_vm_initialize_bytecode);
 
-	GEN_INTERNAL_BASIC_PARAM_CHECK(bytecode);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(bytecode_length);
-	GEN_INTERNAL_BASIC_PARAM_CHECK(out_instance);
+	GEN_NULL_CHECK(bytecode);
+	GEN_NULL_CHECK(bytecode_length);
+	GEN_NULL_CHECK(out_instance);
 
 	const size_t* const aligned_bytecode = (size_t*) bytecode;
 
