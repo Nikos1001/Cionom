@@ -147,8 +147,8 @@ gen_error_t cio_mangle_identifier(const char* const restrict identifier, char** 
 	GEN_ALL_OK;
 }
 
-gen_error_t cio_resolve_mangled(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
-	GEN_FRAME_BEGIN(cio_resolve_mangled);
+gen_error_t cio_resolve_external(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
+	GEN_FRAME_BEGIN(cio_resolve_external);
 
 	GEN_NULL_CHECK(identifier);
 	GEN_NULL_CHECK(out_function);

@@ -11,16 +11,12 @@
     - Add `cio_glog_column_indicator` to `cionom.c`
   - Add AST and Token list cleanup functions 
     - Ensure they work even after failure to completely tokenize/parse (User calls on failure)
-  - Bytecode generation is disgusting
-    - Especially with allocations
-  - Add comments and docstrings!
-  - Hooking into external resolution from user code
-  - Treat `\r` as whitespace
   - Reduce bytecode size
     - Fixed width types
     - Encode instruction type as single bit
       - Use 7 bits to encode offset into routine table/constant pool
   - Overall reduce `grealloc`s and `gzalloc`s
   - Add cleanup function for vm
+    - Fix comment on line 296 of cionom.h to include reference to cleanup
 - Specification
   - Rewrite semantics for new stuff

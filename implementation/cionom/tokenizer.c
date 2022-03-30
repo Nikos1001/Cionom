@@ -4,7 +4,7 @@
 #include "include/cionom.h"
 
 #define CIO_INTERNAL_TOKENIZER_ADVANCE (c = source[++offset])
-#define CIO_INTERNAL_TOKENIZER_IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n' || c == '\0')
+#define CIO_INTERNAL_TOKENIZER_IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')
 #define CIO_INTERNAL_TOKENIZER_IS_NUMBER (c >= '0' && c <= '9')
 
 gen_error_t cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {

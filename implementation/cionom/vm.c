@@ -153,8 +153,8 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 
 		++current_offset;
 		if(out_instance->callables_offsets[i] == SIZE_MAX) {
-			error = cio_resolve_mangled((char*) &aligned_bytecode[current_offset], callable, out_instance->external_lib);
-			GEN_ERROR_OUT_IF(error, "`cio_resolve_mangled` failed");
+			error = cio_resolve_external((char*) &aligned_bytecode[current_offset], callable, out_instance->external_lib);
+			GEN_ERROR_OUT_IF(error, "`cio_resolve_external` failed");
 
 			size_t stride = 0;
 			error = gen_string_length((char*) &aligned_bytecode[current_offset], GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &stride);
