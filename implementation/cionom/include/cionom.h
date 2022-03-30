@@ -72,6 +72,7 @@ typedef struct cio_vm_t {
 
 GEN_ERRORABLE cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length);
 GEN_ERRORABLE cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length);
+GEN_ERRORABLE cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled);
 GEN_ERRORABLE cio_resolve_mangled(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib);
 
 GEN_ERRORABLE cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length);

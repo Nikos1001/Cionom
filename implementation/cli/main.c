@@ -13,9 +13,11 @@ typedef struct {
 	bool execute_bytecode;
 	size_t routine;
 	size_t stack_length;
+	bool print_mangled_identifier;
+	const char* identifier;
 } cio_cli_args_t;
 
-static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length"};
+static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length", "print-mangled-identifier"};
 
 static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
 	GEN_FRAME_BEGIN(cio_cli_arg_handler);
@@ -31,7 +33,7 @@ static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, co
 					break;
 				}
 				case 1: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--emit-bytecode` does not take a parameter");
+					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--emit-bytecode` expected an output file");
 					args->emit_bytecode = true;
 					args->bytecode_file = parameter;
 					break;
@@ -47,6 +49,13 @@ static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, co
 					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--stack-length` expected stack length");
 					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->stack_length);
 					GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");
+					break;
+				}
+				case 4: {
+					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--print-mangled-identifier` expected identifier to mangle");
+					args->print_mangled_identifier = true;
+					args->identifier = parameter;
+					break;
 				}
 			}
 			break;
@@ -74,11 +83,19 @@ int main(const int argc, const char* const* const argv) {
 	gen_error_t error = gen_parse_args(argc, argv, cio_cli_arg_handler, 0, NULL, sizeof(switches) / sizeof(switches[0]), switches, &args);
 	GEN_REQUIRE_NO_ERROR(error);
 
-	if(!args.file) {
+	if(!args.file && !args.print_mangled_identifier) {
 		glog(FATAL, "No source file specified");
 		GEN_REQUIRE_NO_REACH;
 	}
-	if(!args.emit_bytecode && !args.execute_bytecode) {
+	size_t operations = 0;
+	operations += args.emit_bytecode;
+	operations += args.execute_bytecode;
+	operations += args.print_mangled_identifier;
+	if(operations > 1) {
+		glog(FATAL, "Cannot perform multiple operations in the same invocation");
+		GEN_REQUIRE_NO_REACH;
+	}
+	else if(operations < 1) {
 		glog(FATAL, "No operation specified");
 		GEN_REQUIRE_NO_REACH;
 	}
@@ -92,74 +109,84 @@ int main(const int argc, const char* const* const argv) {
 		GEN_REQUIRE_NO_REACH;
 	}
 
-	size_t filename_length = 0;
-	error = gen_string_length(args.file, GEN_PATH_MAX + 1, GEN_PATH_MAX, &filename_length);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	gen_filesystem_handle_t source_handle = {0};
-	error = gen_filesystem_handle_open(&source_handle, args.file);
-	GEN_REQUIRE_NO_ERROR(error);
-	size_t source_length = 0;
-	error = gen_filesystem_handle_size(&source_length, &source_handle);
-	GEN_REQUIRE_NO_ERROR(error);
-	char* source = NULL;
-	error = gzalloc((void**) &source, source_length + 1, sizeof(char));
-	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_filesystem_handle_read((unsigned char*) source, &source_handle, 0, source_length);
-	GEN_REQUIRE_NO_ERROR(error);
-	error = gen_filesystem_handle_close(&source_handle);
-	GEN_REQUIRE_NO_ERROR(error);
-
-	if(args.emit_bytecode) {
-		cio_token_t* tokens = NULL;
-		size_t tokens_length = 0;
-		error = cio_tokenize(source, source_length, &tokens, &tokens_length);
+	if(args.print_mangled_identifier) {
+		char* mangled = NULL;
+		error = cio_mangle_identifier(args.identifier, &mangled);
+		GEN_REQUIRE_NO_ERROR(error);
+		glogf(INFO, "Result of mangling %s is: `%s`", args.identifier, mangled);
+		error = gfree(mangled);
+		GEN_REQUIRE_NO_ERROR(error);
+	}
+	else {
+		size_t filename_length = 0;
+		error = gen_string_length(args.file, GEN_PATH_MAX + 1, GEN_PATH_MAX, &filename_length);
 		GEN_REQUIRE_NO_ERROR(error);
 
-		cio_program_t program = {0};
-		error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
+		gen_filesystem_handle_t source_handle = {0};
+		error = gen_filesystem_handle_open(&source_handle, args.file);
+		GEN_REQUIRE_NO_ERROR(error);
+		size_t source_length = 0;
+		error = gen_filesystem_handle_size(&source_length, &source_handle);
+		GEN_REQUIRE_NO_ERROR(error);
+		char* source = NULL;
+		error = gzalloc((void**) &source, source_length + 1, sizeof(char));
+		GEN_REQUIRE_NO_ERROR(error);
+		error = gen_filesystem_handle_read((unsigned char*) source, &source_handle, 0, source_length);
+		GEN_REQUIRE_NO_ERROR(error);
+		error = gen_filesystem_handle_close(&source_handle);
 		GEN_REQUIRE_NO_ERROR(error);
 
-		unsigned char* bytecode = NULL;
-		size_t bytecode_length = 0;
-		error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
-		GEN_REQUIRE_NO_ERROR(error);
+		if(args.emit_bytecode) {
+			cio_token_t* tokens = NULL;
+			size_t tokens_length = 0;
+			error = cio_tokenize(source, source_length, &tokens, &tokens_length);
+			GEN_REQUIRE_NO_ERROR(error);
 
-		gen_filesystem_handle_t bytecode_file = {0};
-		bool exists = false;
-		error = gen_path_exists(args.bytecode_file, &exists);
-		GEN_REQUIRE_NO_ERROR(error);
-		if(!exists) {
-			error = gen_path_create_file(args.bytecode_file);
+			cio_program_t program = {0};
+			error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
+			GEN_REQUIRE_NO_ERROR(error);
+
+			unsigned char* bytecode = NULL;
+			size_t bytecode_length = 0;
+			error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
+			GEN_REQUIRE_NO_ERROR(error);
+
+			gen_filesystem_handle_t bytecode_file = {0};
+			bool exists = false;
+			error = gen_path_exists(args.bytecode_file, &exists);
+			GEN_REQUIRE_NO_ERROR(error);
+			if(!exists) {
+				error = gen_path_create_file(args.bytecode_file);
+				GEN_REQUIRE_NO_ERROR(error);
+			}
+			error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = gen_filesystem_handle_close(&bytecode_file);
+			GEN_REQUIRE_NO_ERROR(error);
+
+			error = gfree(bytecode);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_free_program(&program);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = gfree(tokens);
 			GEN_REQUIRE_NO_ERROR(error);
 		}
-		error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_filesystem_handle_close(&bytecode_file);
-		GEN_REQUIRE_NO_ERROR(error);
+		else if(args.execute_bytecode) {
+			cio_vm_t vm = {0};
+			error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, args.stack_length, &vm);
+			GEN_REQUIRE_NO_ERROR(error);
 
-		error = gfree(bytecode);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = cio_free_program(&program);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = gfree(tokens);
+			error = cio_vm_push_frame(&vm);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_vm_push(&vm);
+			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_vm_dispatch_call(&vm, args.routine, 0);
+			GEN_REQUIRE_NO_ERROR(error);
+		}
+
+		error = gfree(source);
 		GEN_REQUIRE_NO_ERROR(error);
 	}
-	else if(args.execute_bytecode) {
-		cio_vm_t vm = {0};
-		error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, args.stack_length, &vm);
-		GEN_REQUIRE_NO_ERROR(error);
-
-		error = cio_vm_push_frame(&vm);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = cio_vm_push(&vm);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = cio_vm_dispatch_call(&vm, args.routine, 0);
-		GEN_REQUIRE_NO_ERROR(error);
-	}
-
-	error = gfree(source);
-	GEN_REQUIRE_NO_ERROR(error);
 }

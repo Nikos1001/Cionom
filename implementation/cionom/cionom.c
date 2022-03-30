@@ -99,23 +99,23 @@ static const char* const cio_internal_vm_mangled_grapheme_values[] = {
 	"ampersand"};
 static const char cionom_internal_vm_mangled_grapheme_prefix[] = "__cionom_mangled_grapheme_";
 
-gen_error_t cio_resolve_mangled(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
-	GEN_FRAME_BEGIN(cio_resolve_mangled);
+gen_error_t cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled) {
+	GEN_FRAME_BEGIN(cio_mangle_identifier);
 
 	GEN_NULL_CHECK(identifier);
-	GEN_NULL_CHECK(out_function);
+	GEN_NULL_CHECK(out_mangled);
 
 	size_t identifier_length = 0;
 	gen_error_t error = gen_string_length(identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);
 	GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
 
 	size_t mangled_length = 0;
-	char* mangled = NULL;
+	*out_mangled = NULL;
 	GEN_STRING_FOREACH(c, identifier_length, identifier) {
 		if(*c == '_' || isalnum(*c)) {
-			error = grealloc((void**) &mangled, mangled_length, mangled_length + 2, sizeof(char));
+			error = grealloc((void**) out_mangled, mangled_length, mangled_length + 2, sizeof(char));
 			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-			mangled[mangled_length++] = *c;
+			(*out_mangled)[mangled_length++] = *c;
 			continue;
 		}
 
@@ -133,19 +133,33 @@ gen_error_t cio_resolve_mangled(const char* const restrict identifier, cio_routi
 		error = gen_string_length(mangled_grapheme_value, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &mangled_grapheme_length);
 		GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
 
-		error = grealloc((void**) &mangled, mangled_length, mangled_length + (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length + 1, sizeof(char));
+		error = grealloc((void**) out_mangled, mangled_length, mangled_length + (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length + 1, sizeof(char));
 		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 
 		mangled_length += (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length;
 
-		error = gen_string_append(mangled, mangled_length + 1, cionom_internal_vm_mangled_grapheme_prefix, sizeof(cionom_internal_vm_mangled_grapheme_prefix), sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1);
+		error = gen_string_append(*out_mangled, mangled_length + 1, cionom_internal_vm_mangled_grapheme_prefix, sizeof(cionom_internal_vm_mangled_grapheme_prefix), sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1);
 		GEN_ERROR_OUT_IF(error, "`gen_string_append` failed");
-		error = gen_string_append(mangled, mangled_length + 1, mangled_grapheme_value, mangled_grapheme_length + 1, mangled_grapheme_length);
+		error = gen_string_append(*out_mangled, mangled_length + 1, mangled_grapheme_value, mangled_grapheme_length + 1, mangled_grapheme_length);
 		GEN_ERROR_OUT_IF(error, "`gen_string_append` failed");
 	}
 
+	GEN_ALL_OK;
+}
+
+gen_error_t cio_resolve_mangled(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
+	GEN_FRAME_BEGIN(cio_resolve_mangled);
+
+	GEN_NULL_CHECK(identifier);
+	GEN_NULL_CHECK(out_function);
+
+	char* mangled = NULL;
+	gen_error_t error = cio_mangle_identifier(identifier, &mangled);
+	GEN_ERROR_OUT_IF(error, "`cio_mangle_identifier` failed");
 	error = gen_dylib_symbol((void*) out_function, lib, mangled);
 	GEN_ERROR_OUT_IF(error, "`gen_dylib_symbol` failed");
+	error = gfree(mangled);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
 
 	GEN_ALL_OK;
 }
