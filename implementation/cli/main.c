@@ -33,9 +33,9 @@ static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, co
 					break;
 				}
 				case 1: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--emit-bytecode` expected an output file");
 					args->emit_bytecode = true;
-					args->bytecode_file = parameter;
+					args->bytecode_file = parameter ?: "a.ibc";
+					if(!parameter) glog(WARNING, "No output file specified to `--emit-bytecode`, using \"a.ibc\"");
 					break;
 				}
 				case 2: {
@@ -85,6 +85,10 @@ int main(const int argc, const char* const* const argv) {
 
 	if(!args.file && !args.print_mangled_identifier) {
 		glog(FATAL, "No source file specified");
+		GEN_REQUIRE_NO_REACH;
+	}
+	else if(args.file && args.print_mangled_identifier) {
+		glog(FATAL, "Source file specified when using `--print-mangled-identifier`");
 		GEN_REQUIRE_NO_REACH;
 	}
 	size_t operations = 0;
