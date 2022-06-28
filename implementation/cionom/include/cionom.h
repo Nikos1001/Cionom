@@ -277,6 +277,7 @@ GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
 
 /**
  * Emits executable bytecode for a program representation.
+ * @deprecated this function emits old-style bytecode and has been superceeded by cio_emit_bitcode
  * @param[in] program the program to consume.
  * @param[out] out_bytecode a pointer to storage for a pointer to the emitted bytecode buffer. Must be freed.
  * @param[out] out_bytecode_length a pointer to storage for the length of the emitted bytecode buffer.
@@ -286,7 +287,19 @@ GEN_ERRORABLE cio_free_program(cio_program_t* const restrict program);
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
  * @return an error code.
  */
-GEN_ERRORABLE cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+GEN_ERRORABLE cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) __deprecated_msg("this function emits old-style bytecode and has been superceeded by cio_emit_bitcode");
+/**
+ * Emits executable bitcode for a program representation.
+ * @param[in] program the program to consume.
+ * @param[out] out_bytecode a pointer to storage for a pointer to the emitted bytecode buffer. Must be freed.
+ * @param[out] out_bytecode_length a pointer to storage for the length of the emitted bytecode buffer.
+ * @param[in] source the source buffer from which the program representation was derived.
+ * @param[in] source_length the length of the source buffer from which the program representation was derived.
+ * @param[in] source_file file name from which the source buffer was read.
+ * @param[in] source_file_length the length of the file name from which the source buffer was read.
+ * @return an error code.
+ */
+GEN_ERRORABLE cio_emit_bitcode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
 
 /**
  * Creates and initializes a VM to execute a bytecode buffer.

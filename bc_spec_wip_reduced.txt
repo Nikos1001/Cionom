@@ -1,0 +1,33 @@
+magic - 4 ("cio\0")
+header size - 8
+routine table size - 8
+routine table - routine table size
+    - *
+        ?= external routine
+            - 0xFFFFFFFFFFFFFFFF - 8
+            - symbol name size - 8
+            - symbol name - symbol name size
+        ?= internal routine
+            - routine offset - 8
+constant table size - 8
+constant table - constant table size
+    - *
+        constant - 8
+code size - 8
+code - code size
+    - *
+        X0-X6
+        ?= set
+            X7
+            ?= set
+                - return
+            ?= unset
+                - reserved
+        ?= mixed/unset
+            X7
+            ?= set
+                - call
+                    - routine table -> {X0-X6}
+            ?= unset
+                - push
+                    - constant table -> {X0-X6}
