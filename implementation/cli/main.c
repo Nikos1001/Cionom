@@ -5,8 +5,7 @@
 #include <genargs.h>
 #include <genfs.h>
 
-typedef enum
-{
+typedef enum {
 	CIO_CLI_BYTECODE_OLD,
 	CIO_CLI_BYTECODE_BITCODE
 } cio_cli_bytecode_mode_t;
@@ -234,6 +233,9 @@ int main(const int argc, const char* const* const argv) {
 			error = cio_vm_push(&vm);
 			GEN_REQUIRE_NO_ERROR(error);
 			error = cio_vm_dispatch_call(&vm, args.routine, 0);
+			GEN_REQUIRE_NO_ERROR(error);
+
+			error = cio_free_vm(&vm);
 			GEN_REQUIRE_NO_ERROR(error);
 		}
 

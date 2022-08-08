@@ -310,6 +310,14 @@ GEN_ERRORABLE cio_emit_bitcode(const cio_program_t* const restrict program, unsi
  * @return an error code.
  */
 GEN_ERRORABLE cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+
+/**
+ * Destroys a VM.
+ * @param[out] instance the VM instance to destroy.
+ * @return an error code.
+ */
+GEN_ERRORABLE cio_free_vm(const cio_vm_t* const restrict instance);
+
 /**
  * Dispatches a call to a callable in a VM.
  * @param[in,out] vm the VM to call in.

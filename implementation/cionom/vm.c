@@ -169,3 +169,26 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 
 	GEN_ALL_OK;
 }
+
+gen_error_t cio_free_vm(const cio_vm_t* const restrict instance) {
+	GEN_FRAME_BEGIN(cio_free_vm);
+
+	GEN_NULL_CHECK(instance);
+
+	gen_error_t error = gfree(instance->stack);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+
+	error = gfree(instance->frames);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+
+	error = gen_dylib_unload(instance->external_lib);
+	GEN_ERROR_OUT_IF(error, "`gen_dylib_unload` failed");
+
+	error = gfree(instance->callables);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+
+	error = gfree(instance->callables_offsets);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+
+	GEN_ALL_OK;
+}
