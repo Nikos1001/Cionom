@@ -1,5 +1,5 @@
 # Cíonom Language Specification
-Here lies the specification of the language, aimed to be a relatively human-oriented layout of the language and its features as would be implemented in a conformant implementation - including some extensions an implementation might implement.
+Here lies the specification of the language, aimed to be a relatively human-oriented layout of the language and its features as would be implemented in a conformant implementation.
 
 ## Cíonom Grammar Specification
 All the following constructs should be delimited by whitespace
