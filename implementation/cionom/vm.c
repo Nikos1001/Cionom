@@ -192,3 +192,28 @@ gen_error_t cio_free_vm(const cio_vm_t* const restrict instance) {
 
 	GEN_ALL_OK;
 }
+
+gen_error_t cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer) {
+	GEN_FRAME_BEGIN(cio_vm_get_frame);
+
+	GEN_NULL_CHECK(vm);
+	GEN_NULL_CHECK(out_pointer);
+
+	if(frame_offset >= vm->frames_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`frame_offset` was greater than or equal to `vm->frames_length`");
+
+	*out_pointer = &vm->frames[vm->frames_used - (frame_offset + 1)];
+
+	GEN_ALL_OK;
+}
+
+gen_error_t cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer) {
+	GEN_FRAME_BEGIN(cio_vm_get_frame_pointer);
+
+	GEN_NULL_CHECK(vm);
+	GEN_NULL_CHECK(frame);
+	GEN_NULL_CHECK(out_pointer);
+
+	*out_pointer = &vm->stack[frame->base];
+
+	GEN_ALL_OK;
+}

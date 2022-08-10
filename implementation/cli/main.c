@@ -118,7 +118,7 @@ int main(const int argc, const char* const* const argv) {
 	GEN_REQUIRE_NO_ERROR(error);
 
 	if(!args.file && !args.print_mangled_identifier) {
-		glog(FATAL, "No source file specified");
+		glog(FATAL, "No bytecode file specified");
 		GEN_REQUIRE_NO_REACH;
 	}
 	else if(args.file && args.print_mangled_identifier) {

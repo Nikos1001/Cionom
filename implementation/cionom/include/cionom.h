@@ -7,6 +7,9 @@
  * This is the only header required for processing source, emitting bytecode and executing bytecode.
  */
 
+#ifndef CIONOM_H
+#define CIONOM_H
+
 #include <gencommon.h>
 #include <genstring.h>
 #include <gendl.h>
@@ -345,8 +348,26 @@ GEN_ERRORABLE cio_vm_pop_frame(cio_vm_t* const restrict vm);
  */
 GEN_ERRORABLE cio_vm_push(cio_vm_t* const restrict vm);
 /**
+ * Gets a stack frame.
+ * @param[in] vm the VM containing the stack frame.
+ * @param[in] frame_offset the offset of the stack frame to get back from the current stack frame.
+ * @param[out] out_pointer pointer to storage for a pointer to the stack frame.
+ * @return an error code.
+ */
+GEN_ERRORABLE cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer);
+/**
+ * Gets a pointer into the stack for a stack frame.
+ * @param[in] vm the VM containing the stack.
+ * @param[in] frame the stack frame to get a pointer for.
+ * @param[out] out_pointer pointer to storage for a pointer to the beginning of the stack frame within the stack.
+ * @return an error code.
+ */
+GEN_ERRORABLE cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer);
+/**
  * Dumps the stack state of a VM for diagnostic purposes.
  * @param[in] vm the VM whose stack should be dumped.
  * @return an error code.
  */
 GEN_ERRORABLE cio_vm_dump_stack(const cio_vm_t* const restrict vm);
+
+#endif

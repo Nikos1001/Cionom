@@ -1,0 +1,23 @@
+readn 0
+print 1
++ 2
+- 2
+* 2
+/ 2
+% 2
+
+main 0
+:
+    readn
+    readn
+    + 0 1
+    print 2
+    - 0 1
+    print 4
+    * 0 1
+    print 6
+    / 0 1
+    print 8
+    % 0 1
+    print 10
+:
