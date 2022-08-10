@@ -6,16 +6,16 @@ free* 1
 
 main 0
 :
-    alloc 2
+    alloc 3
     copy*[+]=c 0 0 65
     copy*[+]=c 0 1 65
 
-    alloc 3
+    alloc 4
     copy*[+]=c 3 0 66
     copy*[+]=c 3 1 66
     copy*[+]=c 3 2 66
 
-    alloc 5
+    alloc 6
     buffcopy*->*+c 0 7 0 2
     buffcopy*->*+c 3 7 2 3
 

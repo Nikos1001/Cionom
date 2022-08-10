@@ -1,0 +1,21 @@
+copy*[+]=c 3
+copy=*[+]c 3
+print* 1
+print 1
+alloc 1
+free* 1
+
+main 0
+:
+    alloc 3
+    copy*[+]=c 0 0 65
+    copy*[+]=c 0 1 65
+
+    print* 0
+
+    copy=*[+]c 4 0 0
+
+    print 4
+
+    free* 0
+:

@@ -82,6 +82,8 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 			argc = 0;
 		}
 		else if(*current == CIO_BYTECODE_OPERATION_PUSH) {
+			glogf(DEBUG, "Pushing value %zu to stack frame %zu", current[1], vm->frames_used - 1);
+
 			error = cio_vm_push(vm);
 			GEN_ERROR_OUT_IF(error, "`cio_vm_push` failed");
 			vm->stack[frame->base + frame->height - 1] = current[1];
@@ -102,6 +104,8 @@ gen_error_t cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t calla
 	GEN_FRAME_BEGIN(cio_vm_dispatch_call);
 
 	GEN_NULL_CHECK(vm);
+
+	glogf(DEBUG, "Call dispatched to %zu", callable);
 
 	if(callable >= vm->callables_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`callable` was greater than `vm->callables_length`");
 

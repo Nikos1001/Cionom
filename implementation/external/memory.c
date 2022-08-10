@@ -23,6 +23,23 @@ gen_error_t alloc(cio_vm_t* const restrict vm) {
 	GEN_ALL_OK;
 }
 
+//* `allocv` - Allocate a buffer.
+//* @param [0] The stack index containing the number of bytes to allocate.
+//* @reserve A pointer to the allocated buffer.
+gen_error_t allocv(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(allocv);
+
+	GEN_NULL_CHECK(vm);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	gen_error_t error = gzalloc((void**) &caller[caller_frame->height - 1], caller[current[0]], 1);
+	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+
+	GEN_ALL_OK;
+}
+
 //* `free` - Free an allocated buffer.
 //* @param [0] The stack index of the pointer to free.
 //* @reserve Empty.

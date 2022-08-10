@@ -1,3 +1,5 @@
+![Cíonom Logo](brand/Logo256x256.png)
+
 # Cíonom
 *A tiny language*
 
