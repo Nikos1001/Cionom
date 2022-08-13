@@ -12,7 +12,7 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 	GEN_NULL_CHECK(source);
 	GEN_NULL_CHECK(source_file);
 
-	if(program->routines_length >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Number of routines exceeds maximum allowed by bitcode format");
+	if(program->routines_length >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Number of routines exceeds maximum allowed by bytecode format");
 
 	uint32_t* offsets = NULL;
 	gen_error_t error = gzalloc((void**) &offsets, program->routines_length, sizeof(uint32_t));
@@ -33,7 +33,7 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 				code[code_size] = 0b00000000; // Reserve space
 				for(size_t k = 0; k < call->parameters_length; ++k) {
 					// Emit push for each param
-					if(call->parameters[k] >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Value exceeds maximum allowed by bitcode format");
+					if(call->parameters[k] >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Value exceeds maximum allowed by bytecode format");
 					code[code_size + k + 1] = 0b01111111 & call->parameters[k];
 				}
 				code_size += call->parameters_length + 2;
@@ -59,7 +59,7 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 			code[code_size++] = 0b11111111;
 		}
 
-		if(code_size > INT32_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Emitted code size exceeds maximum allowed by bitcode format");
+		if(code_size > INT32_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Emitted code size exceeds maximum allowed by bytecode format");
 	}
 
 	size_t header_size = 0;
