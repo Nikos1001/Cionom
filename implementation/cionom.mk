@@ -21,7 +21,7 @@ build_message_cionom:
 
 cionom: build_message_cionom $(CIONOM_EXEC) $(CIONOM_EXTERNAL) ### @Cíonom Builds the Cíonom reference implementation
 
-$(CIONOM_LIB): CFLAGS = $(GEN_CORE_CFLAGS)
+$(CIONOM_LIB): CFLAGS = $(GEN_CORE_CFLAGS) -Wno-gnu-binary-literal
 $(CIONOM_LIB): LFLAGS = -Llib $(GEN_CORE_LFLAGS)
 $(CIONOM_LIB): $(CIONOM_LIB_OBJECTS)
 $(CIONOM_LIB_OBJECTS): $(GEN_CORE_LIB)

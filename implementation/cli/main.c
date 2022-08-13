@@ -5,13 +5,6 @@
 #include <genargs.h>
 #include <genfs.h>
 
-typedef enum {
-	CIO_CLI_BYTECODE_OLD,
-	CIO_CLI_BYTECODE_BITCODE
-} cio_cli_bytecode_mode_t;
-static const char cio_cli_bytecode_mode_name_old[] = "old";
-static const char cio_cli_bytecode_mode_name_bitcode[] = "bitcode";
-
 typedef struct {
 	const char* file;
 	bool debug;
@@ -22,11 +15,9 @@ typedef struct {
 	size_t stack_length;
 	bool print_mangled_identifier;
 	const char* identifier;
-	bool explicit_bytecode_mode;
-	cio_cli_bytecode_mode_t bytecode_mode;
 } cio_cli_args_t;
 
-static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length", "print-mangled-identifier", "bytecode-mode"};
+static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length", "print-mangled-identifier"};
 
 static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
 	GEN_FRAME_BEGIN(cio_cli_arg_handler);
@@ -65,28 +56,6 @@ static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, co
 					args->print_mangled_identifier = true;
 					args->identifier = parameter;
 					break;
-				}
-				case 5: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--bytecode-mode` expected a mode (Available modes are `old`, `bitcode`)");
-
-					bool result = false;
-					gen_error_t error = gen_string_compare(parameter, GEN_STRING_NO_BOUND, cio_cli_bytecode_mode_name_old, sizeof(cio_cli_bytecode_mode_name_old), GEN_STRING_NO_BOUND, &result);
-					GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-					if(result) {
-						args->explicit_bytecode_mode = true;
-						args->bytecode_mode = CIO_CLI_BYTECODE_OLD;
-						break;
-					}
-
-					error = gen_string_compare(parameter, GEN_STRING_NO_BOUND, cio_cli_bytecode_mode_name_bitcode, sizeof(cio_cli_bytecode_mode_name_bitcode), GEN_STRING_NO_BOUND, &result);
-					GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-					if(result) {
-						args->explicit_bytecode_mode = true;
-						args->bytecode_mode = CIO_CLI_BYTECODE_BITCODE;
-						break;
-					}
-
-					GEN_ERROR_OUT(GEN_BAD_CONTENT, "Unrecognized bytecode mode (Available modes are `old`, `bitcode`)");
 				}
 				default: {
 					GEN_ERROR_OUT(GEN_BAD_CONTENT, "Unrecognized parameter");
@@ -147,15 +116,6 @@ int main(const int argc, const char* const* const argv) {
 		GEN_REQUIRE_NO_REACH;
 	}
 
-	if(args.print_mangled_identifier && args.explicit_bytecode_mode) {
-		glog(FATAL, "`--bytecode-mode` specified for non-bytecode operation");
-		GEN_REQUIRE_NO_REACH;
-	}
-	else if(!args.print_mangled_identifier && !args.explicit_bytecode_mode) {
-		glog(WARNING, "`--bytecode-mode` not specified, defaulting to `bitcode`");
-		args.bytecode_mode = CIO_CLI_BYTECODE_BITCODE;
-	}
-
 	if(args.print_mangled_identifier) {
 		char* mangled = NULL;
 		error = cio_mangle_identifier(args.identifier, &mangled);
@@ -193,19 +153,22 @@ int main(const int argc, const char* const* const argv) {
 			error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
 			GEN_REQUIRE_NO_ERROR(error);
 
-			GEN_DIAG_REGION_BEGIN
-			GEN_DIAG_IGNORE_DEPRECATION
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
 			error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
 			GEN_REQUIRE_NO_ERROR(error);
-			GEN_DIAG_REGION_END
 
 			gen_filesystem_handle_t bytecode_file = {0};
 			bool exists = false;
 			error = gen_path_exists(args.bytecode_file, &exists);
 			GEN_REQUIRE_NO_ERROR(error);
 			if(!exists) {
+				error = gen_path_create_file(args.bytecode_file);
+				GEN_REQUIRE_NO_ERROR(error);
+			}
+			else {
+				error = gen_path_delete(args.bytecode_file);
+				GEN_REQUIRE_NO_ERROR(error);
 				error = gen_path_create_file(args.bytecode_file);
 				GEN_REQUIRE_NO_ERROR(error);
 			}

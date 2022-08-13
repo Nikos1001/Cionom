@@ -70,31 +70,24 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 	gen_error_t error = GEN_OK;
 
 	cio_frame_t* const frame = &vm->frames[vm->frames_used - 1];
-	const size_t* current = &vm->bytecode[frame->execution_offset];
+	unsigned char instruction = vm->bytecode[frame->execution_offset];
 	size_t argc = 0;
-	while(frame->execution_offset < vm->bytecode_length && !(*current == CIO_BYTECODE_OPERATION_CALL && current[1] == SIZE_MAX)) {
-		if(*current == CIO_BYTECODE_OPERATION_CALL) {
+	while(instruction != 0b11111111) {
+		if(instruction & 0b10000000) {
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
 			frame->height -= argc - 1;
-			error = cio_vm_dispatch_call(vm, current[1], argc - 1);
+			error = cio_vm_dispatch_call(vm, instruction & 0b01111111, argc - 1);
 			GEN_ERROR_OUT_IF(error, "`cio_vm_dispatch_call` failed");
 			argc = 0;
 		}
-		else if(*current == CIO_BYTECODE_OPERATION_PUSH) {
-			glogf(DEBUG, "Pushing value %zu to stack frame %zu", current[1], vm->frames_used - 1);
-
+		else {
 			error = cio_vm_push(vm);
 			GEN_ERROR_OUT_IF(error, "`cio_vm_push` failed");
-			vm->stack[frame->base + frame->height - 1] = current[1];
+			vm->stack[frame->base + frame->height - 1] = instruction & 0b01111111;
 			++argc;
 		}
-		else {
-			glogf(ERROR, "Bad encoding 0x%zx at offset %zu", *current, frame->execution_offset);
-			GEN_ERROR_OUT(GEN_BAD_CONTENT, "Unknown instruction encoding encountered");
-		}
-		frame->execution_offset += 2;
-		current = &vm->bytecode[frame->execution_offset];
+		instruction = vm->bytecode[++frame->execution_offset];
 	}
 
 	GEN_ALL_OK;
@@ -104,8 +97,6 @@ gen_error_t cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t calla
 	GEN_FRAME_BEGIN(cio_vm_dispatch_call);
 
 	GEN_NULL_CHECK(vm);
-
-	glogf(DEBUG, "Call dispatched to %zu", callable);
 
 	if(callable >= vm->callables_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`callable` was greater than `vm->callables_length`");
 
@@ -131,11 +122,6 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 	GEN_NULL_CHECK(bytecode_length);
 	GEN_NULL_CHECK(out_instance);
 
-	const size_t* const aligned_bytecode = (size_t*) bytecode;
-
-	out_instance->bytecode_length = bytecode_length;
-	out_instance->bytecode = aligned_bytecode;
-
 	out_instance->stack_length = stack_length;
 	gen_error_t error = gzalloc((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
@@ -145,31 +131,32 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 	error = gen_dylib_load(&out_instance->external_lib, "cionom-external");
 	GEN_ERROR_OUT_IF(error, "`gen_dylib_load` failed");
 
-	out_instance->callables_length = aligned_bytecode[0];
+	out_instance->callables_length = bytecode[0];
 	error = gzalloc((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 	error = gzalloc((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
-	size_t current_offset = 1;
-	GEN_FOREACH_PTR(i, callable, out_instance->callables_length, out_instance->callables) {
-		out_instance->callables_offsets[i] = aligned_bytecode[current_offset];
+	size_t offset = 1;
+	for(size_t i = 0; i < out_instance->callables_length; ++i) {
+		out_instance->callables[i] = cio_internal_vm_execute_routine;
+		out_instance->callables_offsets[i] = *(uint32_t*) &bytecode[offset];
+		offset += 4;
 
-		++current_offset;
-		if(out_instance->callables_offsets[i] == SIZE_MAX) {
-			error = cio_resolve_external((char*) &aligned_bytecode[current_offset], callable, out_instance->external_lib);
+		if(out_instance->callables_offsets[i] == UINT32_MAX) {
+			error = cio_resolve_external((char*) &bytecode[offset], &out_instance->callables[i], out_instance->external_lib);
 			GEN_ERROR_OUT_IF(error, "`cio_resolve_external` failed");
 
 			size_t stride = 0;
-			error = gen_string_length((char*) &aligned_bytecode[current_offset], GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &stride);
+			error = gen_string_length((char*) &bytecode[offset], GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &stride);
 			GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
 
-			current_offset += (size_t) (ceil((double) stride / (double) sizeof(size_t)));
-			continue;
+			offset += stride + 1;
 		}
-
-		*callable = cio_internal_vm_execute_routine;
 	}
+
+	out_instance->bytecode_length = bytecode_length - offset;
+	out_instance->bytecode = bytecode + offset;
 
 	GEN_ALL_OK;
 }

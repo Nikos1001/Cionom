@@ -3,7 +3,7 @@
 
 #include "include/cionom.h"
 
-gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
+gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, __unused const size_t source_length, const char* const restrict source_file, __unused const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_emit_bytecode);
 
 	GEN_NULL_CHECK(program);
@@ -12,86 +12,107 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 	GEN_NULL_CHECK(source);
 	GEN_NULL_CHECK(source_file);
 
-	size_t bytecode_length = 1;
-	size_t* bytecode = NULL;
-	gen_error_t error = gzalloc((void**) &bytecode, bytecode_length, sizeof(size_t));
+	if(program->routines_length >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Number of routines exceeds maximum allowed by bitcode format");
+
+	uint32_t* offsets = NULL;
+	gen_error_t error = gzalloc((void**) &offsets, program->routines_length, sizeof(uint32_t));
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
-	bytecode[0] = program->routines_length;
-
-	GEN_FOREACH_PTR(i, routine, program->routines_length, program->routines) {
-		error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + 1, sizeof(size_t));
-		++bytecode_length;
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-
-		if(routine->external) {
-			bytecode[bytecode_length - 1] = SIZE_MAX;
-
-			size_t identifier_length = 0;
-			error = gen_string_length(routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);
-			++identifier_length;
-			GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
-			const size_t identifier_aligned_length = (size_t) (ceil((double) identifier_length / (double) sizeof(size_t)));
-			error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + identifier_aligned_length + 1, sizeof(size_t));
-			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-			bytecode_length += identifier_aligned_length;
-
-			error = gen_string_copy((char*) (bytecode + (bytecode_length - (identifier_aligned_length))), identifier_length + 1, routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND);
-			GEN_ERROR_OUT_IF(error, "`gen_string_copy` failed");
-
-			continue;
-		}
-		bytecode[bytecode_length - 1] = bytecode_length;
-
-		size_t stride = (routine->calls_length + 1) * 2;
-		GEN_FOREACH_PTR(j, stride_check_call, routine->calls_length, routine->calls) {
-			stride += (stride_check_call->parameters_length * 2);
-		}
-		stride += (routine->calls_length * 2); // Reserve space
-		error = grealloc((void**) &bytecode, bytecode_length, bytecode_length + stride, sizeof(size_t));
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-
-		size_t insertion_offset = bytecode_length;
-		GEN_FOREACH_PTR(j, call, routine->calls_length, routine->calls) {
-			// Reserve space
-			bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
-			bytecode[insertion_offset++] = 0;
-
-			GEN_FOREACH_PTR(k, parameter, call->parameters_length, call->parameters) {
-				bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_PUSH;
-				bytecode[insertion_offset++] = *parameter;
-			}
-			bytecode[insertion_offset++] = CIO_BYTECODE_OPERATION_CALL;
-
-			bool equal = false;
-			size_t called_index = 0;
-			GEN_FOREACH_PTR(k, called_routine, program->routines_length, program->routines) {
-				error = gen_string_compare(call->identifier, GEN_STRING_NO_BOUND, called_routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &equal);
-				GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
-				if(equal) {
-					called_index = k;
-					break;
+	size_t code_size = 0;
+	unsigned char* code = NULL;
+	// Codegen
+	{
+		for(size_t i = 0; i < program->routines_length; ++i) {
+			const cio_routine_t* const routine = &program->routines[i];
+			if(routine->external) continue;
+			offsets[i] = (uint32_t) code_size;
+			for(size_t j = 0; j < routine->calls_length; ++j) {
+				const cio_call_t* const call = &routine->calls[j];
+				error = grealloc((void**) &code, code_size, code_size + call->parameters_length + 2, sizeof(unsigned char));
+				GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+				code[code_size] = 0b00000000; // Reserve space
+				for(size_t k = 0; k < call->parameters_length; ++k) {
+					// Emit push for each param
+					if(call->parameters[k] >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Value exceeds maximum allowed by bitcode format");
+					code[code_size + k + 1] = 0b01111111 & call->parameters[k];
 				}
+				code_size += call->parameters_length + 2;
+				size_t called = SIZE_MAX;
+				// Locate called routine's index
+				for(size_t k = 0; k < program->routines_length; ++k) {
+					bool equal = false;
+					error = gen_string_compare(call->identifier, GEN_STRING_NO_BOUND, program->routines[k].identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &equal);
+					GEN_ERROR_OUT_IF(error, "`gen_string_compare` failed");
+
+					if(equal) {
+						called = k;
+						break;
+					}
+				}
+				if(called == SIZE_MAX) GEN_ERROR_OUT(GEN_NO_SUCH_OBJECT, "Call to undeclared routine");
+				// Emit call
+				code[code_size - 1] = 0b10000000 | (unsigned char) called;
 			}
-			if(!equal) {
-				size_t line = 0;
-				size_t column = 0;
-				error = cio_line_from_offset(call->token->offset, &line, source, source_length);
-				GEN_ERROR_OUT_IF(error, "`cio_line_from_offset` failed");
-				error = cio_column_from_offset(call->token->offset, &column, source, source_length);
-				GEN_ERROR_OUT_IF(error, "`cio_column_from_offset` failed");
-				glogf(ERROR, "Invalid AST: Unknown routine identifier %s in %s:%zu:%zu", call->identifier, source_file, line, column);
-				GEN_ERROR_OUT(GEN_BAD_CONTENT, "Bytecode generation failed");
-			}
-			bytecode[insertion_offset++] = called_index;
+			error = grealloc((void**) &code, code_size, code_size + 1, sizeof(unsigned char));
+			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+			// Emit return
+			code[code_size++] = 0b11111111;
 		}
-		bytecode[bytecode_length + stride - 2] = CIO_BYTECODE_OPERATION_CALL;
-		bytecode[bytecode_length + stride - 1] = SIZE_MAX;
-		bytecode_length += stride;
+
+		if(code_size > INT32_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Emitted code size exceeds maximum allowed by bitcode format");
 	}
 
-	*out_bytecode_length = bytecode_length * sizeof(size_t);
-	*out_bytecode = (unsigned char*) bytecode;
+	size_t header_size = 0;
+	unsigned char* header = NULL;
+
+	// Header
+	{
+		error = gzalloc((void**) &header, ++header_size, sizeof(unsigned char));
+		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+
+		header[0] = (unsigned char) program->routines_length;
+
+		for(size_t i = 0; i < program->routines_length; ++i) {
+			const cio_routine_t* const routine = &program->routines[i];
+			if(routine->external) {
+				size_t identifier_length = 0;
+				error = gen_string_length(routine->identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);
+				GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+
+				error = grealloc((void**) &header, header_size, header_size + 4 + identifier_length + 1, sizeof(unsigned char));
+				GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+
+				*(uint32_t*) &header[header_size] = 0xFFFFFFFF;
+
+				for(size_t j = 0; j < identifier_length + 1; ++j) {
+					header[header_size + j + 4] = (unsigned char) routine->identifier[j];
+				}
+
+				header_size += 4 + identifier_length + 1;
+			}
+			else {
+				error = grealloc((void**) &header, header_size, header_size + 4, sizeof(unsigned char));
+				GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+
+				*(uint32_t*) &header[header_size] = offsets[i];
+
+				header_size += 4;
+			}
+		}
+	}
+
+	*out_bytecode_length = header_size + code_size;
+	error = gzalloc((void**) out_bytecode, *out_bytecode_length, sizeof(unsigned char));
+	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+
+	error = gen_memory_copy(header, header_size, *out_bytecode, *out_bytecode_length, header_size);
+	GEN_ERROR_OUT_IF(error, "`gen_memory_copy` failed");
+
+	error = gen_memory_copy(code, code_size, *out_bytecode + header_size, *out_bytecode_length - header_size, code_size);
+	GEN_ERROR_OUT_IF(error, "`gen_memory_copy` failed");
+
+	error = gfree(offsets);
+	GEN_ERROR_OUT_IF(error, "`gfree` failed");
 
 	GEN_ALL_OK;
 }
