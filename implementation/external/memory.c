@@ -17,10 +17,7 @@ gen_error_t alloc(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	gen_error_t error = cio_vm_dump_stack(vm);
-	GEN_ERROR_OUT_IF(error, "`cio_vm_dump_stack` failed");
-
-	error = gzalloc((void**) &caller[caller_frame->height - 1], current[0], 1);
+	gen_error_t error = gzalloc((void**) &caller[caller_frame->height - 1], current[0], 1);
 	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
 
 	GEN_ALL_OK;
