@@ -158,6 +158,9 @@ gen_error_t cio_resolve_external(const char* const restrict identifier, cio_rout
 	char* mangled = NULL;
 	gen_error_t error = cio_mangle_identifier(identifier, &mangled);
 	GEN_ERROR_OUT_IF(error, "`cio_mangle_identifier` failed");
+
+	// glogf(DEBUG, "Attempting to resolve `%s` externally as `%s`...", identifier, mangled);
+
 	error = gen_dylib_symbol((void*) out_function, lib, mangled);
 	GEN_ERROR_OUT_IF(error, "`gen_dylib_symbol` failed");
 	error = gfree(mangled);

@@ -74,6 +74,8 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 	size_t argc = 0;
 	while(instruction != 0b11111111) {
 		if(instruction & 0b10000000) {
+			// glogf(DEBUG, "call %d", instruction & 0b01111111);
+
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
 			frame->height -= argc - 1;
@@ -82,6 +84,8 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 			argc = 0;
 		}
 		else {
+			// glogf(DEBUG, "push %d", instruction & 0b01111111);
+
 			error = cio_vm_push(vm);
 			GEN_ERROR_OUT_IF(error, "`cio_vm_push` failed");
 			vm->stack[frame->base + frame->height - 1] = instruction & 0b01111111;
@@ -89,6 +93,7 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 		}
 		instruction = vm->bytecode[++frame->execution_offset];
 	}
+	// glog(DEBUG, "ret");
 
 	GEN_ALL_OK;
 }

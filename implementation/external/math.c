@@ -18,7 +18,7 @@ gen_error_t __cionom_mangled_grapheme_plus(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	caller[caller_frame->height - 1] = current[0] + current[1];
+	caller[caller_frame->height - 1] = caller[current[0]] + caller[current[1]];
 
 	GEN_ALL_OK;
 }
@@ -35,7 +35,7 @@ gen_error_t __cionom_mangled_grapheme_minus(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	caller[caller_frame->height - 1] = current[0] - current[1];
+	caller[caller_frame->height - 1] = caller[current[0]] - caller[current[1]];
 
 	GEN_ALL_OK;
 }
@@ -52,7 +52,7 @@ gen_error_t __cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	caller[caller_frame->height - 1] = current[0] * current[1];
+	caller[caller_frame->height - 1] = caller[current[0]] * caller[current[1]];
 
 	GEN_ALL_OK;
 }
@@ -69,7 +69,7 @@ gen_error_t __cionom_mangled_grapheme_slash(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	caller[caller_frame->height - 1] = current[0] / current[1];
+	caller[caller_frame->height - 1] = caller[current[0]] / caller[current[1]];
 
 	GEN_ALL_OK;
 }
@@ -86,7 +86,7 @@ gen_error_t __cionom_mangled_grapheme_percentage(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	caller[caller_frame->height - 1] = current[0] % current[1];
+	caller[caller_frame->height - 1] = caller[current[0]] % caller[current[1]];
 
 	GEN_ALL_OK;
 }
