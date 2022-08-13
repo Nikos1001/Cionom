@@ -1,0 +1,11 @@
+print 1
+
+foo 1
+:
+    print 0
+:
+
+main 0
+:
+    foo 108
+:
