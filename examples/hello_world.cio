@@ -1,5 +1,5 @@
 copy*[+]=c 3
-print* 1
+printc* 1
 alloc 1
 free* 1
 
@@ -21,6 +21,6 @@ main 0
     copy*[+]=c 0 11 100
     copy*[+]=c 0 12 33
 
-    print* 0
+    printc* 0
     free* 0
 :

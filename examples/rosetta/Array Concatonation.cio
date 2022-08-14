@@ -1,6 +1,6 @@
 copy*[+]=c 3
 buffcopy*->*+c 4
-print* 1
+printc* 1
 alloc 1
 free* 1
 
@@ -19,9 +19,9 @@ main 0
     buffcopy*->*+c 0 7 0 2
     buffcopy*->*+c 3 7 2 3
 
-    print* 0
-    print* 3
-    print* 7
+    printc* 0
+    printc* 3
+    printc* 7
 
     free* 0
     free* 3

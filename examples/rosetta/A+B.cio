@@ -1,5 +1,5 @@
 readn 0
-print 1
+printn 1
 + 2
 
 main 0
@@ -7,5 +7,5 @@ main 0
     readn
     readn
     + 0 1
-    print 2
+    printn 2
 :

@@ -1,10 +1,10 @@
-print 1
+printn 1
 printc 1
 copy= 2
 
 main 0
 :
     copy= 0 65
-    print 0
+    printn 0
     printc 0
 :

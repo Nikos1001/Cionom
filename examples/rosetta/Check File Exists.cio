@@ -1,11 +1,11 @@
 copy*[+]=c 3
 copy= 2
-print 1
+printn 1
 alloc 1
 free* 1
 path? 1
 + 2
-print* 1
+printc* 1
 
 main 0
 :
@@ -22,15 +22,15 @@ main 0
     copy*[+]=c 0 8 120
     copy*[+]=c 0 9 116
 
-    print* 0
+    printc* 0
     path? 0
-    print 12
+    printn 12
 
     copy= 14 1
     + 0 14
-    print* 15
+    printc* 15
     path? 15
-    print 17
+    printn 17
 
     free* 0
 
@@ -42,14 +42,14 @@ main 0
     copy*[+]=c 20 3 99
     copy*[+]=c 20 4 115
 
-    print* 20
+    printc* 20
     path? 20
-    print 27
+    printn 27
 
     + 20 14
-    print* 29
+    printc* 29
     path? 29
-    print 31
+    printn 31
 
     free* 20
 :

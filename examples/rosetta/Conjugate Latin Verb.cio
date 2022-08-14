@@ -1,0 +1,59 @@
+copy= 2
+copy*[+v]=c 3
+buffcopy*->*+c 4
+
+printc* 1
+readc* 2
+
+alloc 1
+free* 1
+
+lenc* 1
+
++ 2
+- 2
+
+main 0
+:
+    alloc 12
+    readc* 0 10
+    printc* 0
+
+    lenc* 0
+    copy= 4 3
+    - 3 4
+
+    copy*[+v]=c 0 5 111
+    copy= 7 1
+    + 5 7
+    copy*[+v]=c 0 8 0
+    printc* 0
+
+    copy*[+v]=c 0 5 97
+    copy*[+v]=c 0 8 115
+    + 8 7
+    copy*[+v]=c 0 13 0
+    printc* 0
+
+    copy*[+v]=c 0 8 116
+    printc* 0
+
+    copy*[+v]=c 0 8 109
+    copy*[+v]=c 0 13 117
+    + 13 7
+    copy*[+v]=c 0 20 115
+    + 20 7
+    copy*[+v]=c 0 22 0
+    printc* 0
+
+    copy*[+v]=c 0 8 116
+    copy*[+v]=c 0 13 105
+    printc* 0
+
+    copy*[+v]=c 0 8 110
+    copy*[+v]=c 0 13 116
+    copy*[+v]=c 0 20 0
+    printc* 0
+
+    free* 0
+:

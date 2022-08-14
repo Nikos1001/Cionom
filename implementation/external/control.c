@@ -25,4 +25,23 @@ gen_error_t __cionom_mangled_grapheme_question_mark(cio_vm_t* const restrict vm)
 	GEN_ALL_OK;
 }
 
+//* `?+-` - Branches control flow to a routine based on a condition.
+//* @param [0] The index of the routine to branch to if the condition is greater than or equal to zero.
+//* @param [1] The index of the routine to branch to if the condition is less than zero.
+//* @param [2] The stack index of the condition.
+//* @reserve Empty.
+gen_error_t __cionom_mangled_grapheme_question_mark__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_minus(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(__cionom_mangled_grapheme_question_mark__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_minus);
+
+	GEN_NULL_CHECK(vm);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	gen_error_t error = cio_vm_dispatch_call(vm, (ssize_t) caller[current[2]] >= 0 ? current[0] : current[1], 0);
+	GEN_ERROR_OUT_IF(error, "`cio_vm_dispatch_call` failed");
+
+	GEN_ALL_OK;
+}
+
 CIO_EXTLIB_END_DEFS

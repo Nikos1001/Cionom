@@ -1,5 +1,5 @@
 readn 0
-print 1
+printn 1
 + 2
 - 2
 * 2
@@ -11,13 +11,13 @@ main 0
     readn
     readn
     + 0 1
-    print 2
+    printn 2
     - 0 1
-    print 4
+    printn 4
     * 0 1
-    print 6
+    printn 6
     / 0 1
-    print 8
+    printn 8
     % 0 1
-    print 10
+    printn 10
 :

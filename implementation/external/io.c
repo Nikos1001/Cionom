@@ -6,11 +6,11 @@
 
 CIO_EXTLIB_BEGIN_DEFS
 
-//* `print*` - Print pointer.
+//* `printc*` - Print pointer.
 //* @param [0] The stack index containing the pointer to the first character of a NULL-terminated string.
 //* @reserve Empty.
-gen_error_t print__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(print__cionom_mangled_grapheme_asterisk);
+gen_error_t printc__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(printc__cionom_mangled_grapheme_asterisk);
 
 	GEN_NULL_CHECK(vm);
 
@@ -22,11 +22,11 @@ gen_error_t print__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm)
 	GEN_ALL_OK;
 }
 
-//* `print` - Print value from stack.
+//* `printn` - Print value from stack.
 //* @param [0] The stack index containing the value to print.
 //* @reserve Empty.
-gen_error_t print(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(print);
+gen_error_t printn(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(printn);
 
 	GEN_NULL_CHECK(vm);
 
@@ -64,6 +64,32 @@ gen_error_t readn(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
 	scanf("%zu", &caller[caller_frame->height - 1]);
+	GEN_ERROR_OUT_ERRNO(scanf, errno);
+
+	GEN_ALL_OK;
+}
+
+//* `readc*` - Read null terminated string of characters.
+//* @param [0] The stack index of a pointer to a buffer in which to store read characters.
+//* @param [1] The number of characters to read.
+//* @reserve Empty.
+gen_error_t readc__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(readc__cionom_mangled_grapheme_asterisk);
+
+	GEN_NULL_CHECK(vm);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	char* buff = (char*) caller[current[0]];
+
+	fgets(buff, (int) current[1], stdin);
+	GEN_ERROR_OUT_IF_ERRNO(fgets, errno);
+
+	size_t length = 0;
+	gen_error_t error = gen_string_length(buff, GEN_STRING_NO_BOUND, current[1], &length);
+	GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+	if(buff[length - 1] == '\n') buff[length - 1] = '\0';
 
 	GEN_ALL_OK;
 }
