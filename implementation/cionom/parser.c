@@ -27,10 +27,11 @@ static __nodiscard gen_error_t cio_internal_parse_expect(const cio_token_t* cons
 gen_error_t cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
 	GEN_FRAME_BEGIN(cio_parse);
 
-	GEN_NULL_CHECK(tokens);
 	GEN_NULL_CHECK(out_program);
 	GEN_NULL_CHECK(source);
 	GEN_NULL_CHECK(source_file);
+
+	if(!tokens) GEN_ALL_OK;
 
 	gen_error_t error = GEN_OK;
 

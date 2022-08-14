@@ -137,10 +137,12 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 	GEN_ERROR_OUT_IF(error, "`gen_dylib_load` failed");
 
 	out_instance->callables_length = bytecode[0];
-	error = gzalloc((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
-	error = gzalloc((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+	if(out_instance->callables_length) {
+		error = gzalloc((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
+		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+		error = gzalloc((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
+		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+	}
 
 	size_t offset = 1;
 	for(size_t i = 0; i < out_instance->callables_length; ++i) {

@@ -38,6 +38,7 @@ genstone/vendor/tmp/*
 
 filename
 test.c
+output.txt
 
 .vscode
 .vs

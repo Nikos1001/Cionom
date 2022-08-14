@@ -14,9 +14,13 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 
 	if(program->routines_length >= UINT8_MAX) GEN_ERROR_OUT(GEN_TOO_LONG, "Number of routines exceeds maximum allowed by bytecode format");
 
+	gen_error_t error = GEN_OK;
+
 	uint32_t* offsets = NULL;
-	gen_error_t error = gzalloc((void**) &offsets, program->routines_length, sizeof(uint32_t));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+	if(program->routines_length) {
+		error = gzalloc((void**) &offsets, program->routines_length, sizeof(uint32_t));
+		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+	}
 
 	size_t code_size = 0;
 	unsigned char* code = NULL;
@@ -108,11 +112,15 @@ gen_error_t cio_emit_bytecode(const cio_program_t* const restrict program, unsig
 	error = gen_memory_copy(header, header_size, *out_bytecode, *out_bytecode_length, header_size);
 	GEN_ERROR_OUT_IF(error, "`gen_memory_copy` failed");
 
-	error = gen_memory_copy(code, code_size, *out_bytecode + header_size, *out_bytecode_length - header_size, code_size);
-	GEN_ERROR_OUT_IF(error, "`gen_memory_copy` failed");
+	if(code) {
+		error = gen_memory_copy(code, code_size, *out_bytecode + header_size, *out_bytecode_length - header_size, code_size);
+		GEN_ERROR_OUT_IF(error, "`gen_memory_copy` failed");
+	}
 
-	error = gfree(offsets);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	if(offsets) {
+		error = gfree(offsets);
+		GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	}
 
 	GEN_ALL_OK;
 }

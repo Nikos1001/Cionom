@@ -69,6 +69,7 @@ gen_error_t __cionom_mangled_grapheme_slash(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
+	if(caller[current[1]] == 0) GEN_ERROR_OUT(GEN_INVALID_PARAMETER, "Division by zero");
 	caller[caller_frame->height - 1] = caller[current[0]] / caller[current[1]];
 
 	GEN_ALL_OK;
@@ -86,6 +87,7 @@ gen_error_t __cionom_mangled_grapheme_percentage(cio_vm_t* const restrict vm) {
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
+	if(caller[current[1]] == 0) GEN_ERROR_OUT(GEN_INVALID_PARAMETER, "Division by zero");
 	caller[caller_frame->height - 1] = caller[current[0]] % caller[current[1]];
 
 	GEN_ALL_OK;

@@ -27,4 +27,34 @@ gen_error_t path__cionom_mangled_grapheme_question_mark(cio_vm_t* const restrict
 	GEN_ALL_OK;
 }
 
+//* `pathcreatef` - Creates a new file at path.
+//* @param [0] The stack index containing a pointer to the first character of a NULL-terminated path string.
+//* @reserve Empty.
+gen_error_t pathcreatef(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(pathcreatef);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	gen_error_t error = gen_path_create_file((char*) caller[current[0]]);
+	GEN_ERROR_OUT_IF(error, "`gen_path_create_file` failed");
+
+	GEN_ALL_OK;
+}
+
+//* `pathcreated` - Creates a new directory at path.
+//* @param [0] The stack index containing a pointer to the first character of a NULL-terminated path string.
+//* @reserve Empty.
+gen_error_t pathcreated(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(pathcreated);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	gen_error_t error = gen_path_create_dir((char*) caller[current[0]]);
+	GEN_ERROR_OUT_IF(error, "`gen_path_create_dir` failed");
+
+	GEN_ALL_OK;
+}
+
 CIO_EXTLIB_END_DEFS

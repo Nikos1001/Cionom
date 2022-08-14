@@ -172,19 +172,25 @@ int main(const int argc, const char* const* const argv) {
 				error = gen_path_create_file(args.bytecode_file);
 				GEN_REQUIRE_NO_ERROR(error);
 			}
-			error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
-			GEN_REQUIRE_NO_ERROR(error);
-			error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
-			GEN_REQUIRE_NO_ERROR(error);
-			error = gen_filesystem_handle_close(&bytecode_file);
-			GEN_REQUIRE_NO_ERROR(error);
+			if(bytecode) {
+				error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
+				GEN_REQUIRE_NO_ERROR(error);
+				error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
+				GEN_REQUIRE_NO_ERROR(error);
+				error = gen_filesystem_handle_close(&bytecode_file);
+				GEN_REQUIRE_NO_ERROR(error);
 
-			error = gfree(bytecode);
-			GEN_REQUIRE_NO_ERROR(error);
+				error = gfree(bytecode);
+				GEN_REQUIRE_NO_ERROR(error);
+			}
+
 			error = cio_free_program(&program);
 			GEN_REQUIRE_NO_ERROR(error);
-			error = gfree(tokens);
-			GEN_REQUIRE_NO_ERROR(error);
+
+			if(tokens) {
+				error = gfree(tokens);
+				GEN_REQUIRE_NO_ERROR(error);
+			}
 		}
 		else if(args.execute_bytecode) {
 			cio_vm_t vm = {0};
