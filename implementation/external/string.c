@@ -23,4 +23,23 @@ gen_error_t lenc__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) 
 	GEN_ALL_OK;
 }
 
+//* `fpstring?` - Checks whether a NULL-terminated string is valid for conversion to a floating-point number.
+//* @param [0] The stack index of a pointer to the first character in the string.
+//* @reserve 1 if the string is valid for conversion, 0 otherwise.
+gen_error_t fpstring__cionom_mangled_grapheme_question_mark(cio_vm_t* const restrict vm) {
+	GEN_FRAME_BEGIN(fpstring__cionom_mangled_grapheme_question_mark);
+
+	GEN_NULL_CHECK(vm);
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	char* p = NULL;
+	strtod((char*) caller[current[0]], &p);
+	// glogf(DEBUG, "`%s` is %sa valid floating point literal", (char*) caller[current[0]], *p == '\0' ? "" : "not ");
+	caller[caller_frame->height - 1] = *p == '\0';
+
+	GEN_ALL_OK;
+}
+
 CIO_EXTLIB_END_DEFS

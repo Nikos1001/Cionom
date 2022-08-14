@@ -1,0 +1,17 @@
+copy*[+]=c 3
+printc* 1
+printn 1
+readc* 2
+alloc 1
+free* 1
+fpstring? 1
+
+main 0
+:
+    alloc 11
+    readc* 0 10
+    printc* 0
+
+    fpstring? 0
+    printn 3
+:
