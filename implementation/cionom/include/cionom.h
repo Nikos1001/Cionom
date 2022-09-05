@@ -12,7 +12,7 @@
 
 #include <gencommon.h>
 #include <genstring.h>
-#include <gendl.h>
+#include <gendynamiclibrary.h>
 
 /**
  * The type of a source token.
