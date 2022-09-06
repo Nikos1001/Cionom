@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2021 TTG <prs.ttg+cionom@pm.me>
+// Copyright (C) 2022 Emily "TTG" Banerjee <prs.ttg+cionom@pm.me>
 
 #include "include/cionom.h"
+
+#include <genmemory.h>
 
 #define CIO_INTERNAL_TOKENIZER_ADVANCE (c = source[++offset])
 #define CIO_INTERNAL_TOKENIZER_IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')
 #define CIO_INTERNAL_TOKENIZER_IS_NUMBER (c >= '0' && c <= '9')
 
-gen_error_t cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
-	GEN_FRAME_BEGIN(cio_tokenize);
+gen_error_t* cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_tokenize, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(source);
-	GEN_NULL_CHECK(out_tokens);
-	GEN_NULL_CHECK(out_tokens_length);
+	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
+	if(!out_tokens) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens` was `NULL`");
+	if(!out_tokens_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens_length` was `NULL`");
 
 	*out_tokens = NULL;
 	*out_tokens_length = 0;
-
-	gen_error_t error = GEN_OK;
 
 	size_t offset = 0;
 	char c = source[offset];
@@ -28,9 +29,9 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 			continue;
 		}
 
-		error = grealloc((void**) out_tokens, *out_tokens_length, *out_tokens_length + 1, sizeof(cio_token_t));
+		error = gen_memory_reallocate_zeroed((void**) out_tokens, *out_tokens_length, *out_tokens_length + 1, sizeof(cio_token_t));
+        if(error) return error;
 		++*out_tokens_length;
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
 		cio_token_t* const token = &(*out_tokens)[*out_tokens_length - 1];
 		token->offset = offset;
 
@@ -58,5 +59,5 @@ gen_error_t cio_tokenize(const char* const restrict source, const size_t source_
 		}
 	} while(offset < source_length);
 
-	GEN_ALL_OK;
+	return NULL;
 }

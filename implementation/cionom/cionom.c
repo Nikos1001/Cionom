@@ -1,38 +1,42 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2021 TTG <prs.ttg+cionom@pm.me>
+// Copyright (C) 2022 Emily "TTG" Banerjee <prs.ttg+cionom@pm.me>
 
 #include "include/cionom.h"
 
-gen_error_t cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length) {
-	GEN_FRAME_BEGIN(cio_line_from_offset);
+#include <genmemory.h>
+#include <genstring.h>
 
-	GEN_NULL_CHECK(source);
-	GEN_NULL_CHECK(out_line);
+gen_error_t* cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_line_from_offset, GEN_FILE_NAME);
+	if(error) return error;
 
-	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
+	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
+	if(!out_line) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_line` was `NULL`");
+
+	if(offset >= source_length) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`offset` exceeded `source_length`");
 
 	*out_line = 1;
-	GEN_STRING_FOREACH(c, offset, source)
-	if(*c == '\n') ++*out_line;
+    for(size_t i = 0; i < offset; ++i) if(source[i] == '\n') ++*out_line;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length) {
-	GEN_FRAME_BEGIN(cio_column_from_offset);
+gen_error_t* cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_column_from_offset, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(source);
-	GEN_NULL_CHECK(out_column);
+	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
+	if(!out_column) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_column` was `NULL`");
 
-	if(offset >= source_length) GEN_ERROR_OUT(GEN_TOO_LONG, "`offset` exceeded `source_length`");
+	if(offset >= source_length) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`offset` exceeded `source_length`");
 
 	*out_column = 1;
-	GEN_STRING_FOREACH(c, offset, source) {
+	for(size_t i = 0; i < offset; ++i) {
 		++*out_column;
-		if(*c == '\n') *out_column = 1;
+		if(source[i] == '\n') *out_column = 1;
 	}
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
 static const char cio_internal_vm_mangled_grapheme_keys[] = {
@@ -101,70 +105,82 @@ static const char* const cio_internal_vm_mangled_grapheme_values[] = {
 	"ampersand"};
 static const char cionom_internal_vm_mangled_grapheme_prefix[] = "__cionom_mangled_grapheme_";
 
-gen_error_t cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled) {
-	GEN_FRAME_BEGIN(cio_mangle_identifier);
+gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_mangle_identifier, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(identifier);
-	GEN_NULL_CHECK(out_mangled);
+	if(!identifier) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`identifier` was `NULL`");
+	if(!out_mangled) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_mangled` was `NULL`");
 
 	size_t identifier_length = 0;
-	gen_error_t error = gen_string_length(identifier, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &identifier_length);
-	GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+	error = gen_string_length(identifier, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &identifier_length);
+	if(error) return error;
 
 	size_t mangled_length = 0;
 	*out_mangled = NULL;
-	GEN_STRING_FOREACH(c, identifier_length, identifier) {
-		if(*c == '_' || isalnum(*c)) {
-			error = grealloc((void**) out_mangled, mangled_length, mangled_length + 2, sizeof(char));
-			GEN_ERROR_OUT_IF(error, "`grealloc` failed");
-			(*out_mangled)[mangled_length++] = *c;
+    for(size_t i = 0; i < identifier_length; ++i) {
+		if(identifier[i] == '_' || (identifier[i] >= '0' && identifier[i] <= '9') || (identifier[i] >= 'a' && identifier[i] <= 'z') || (identifier[i] >= 'A' && identifier[i] <= 'Z')) {
+			error = gen_memory_reallocate_zeroed((void**) out_mangled, mangled_length, mangled_length + 2, sizeof(char));
+        	if(error) return error;
+			(*out_mangled)[mangled_length++] = identifier[i];
 			continue;
 		}
 
 		const char* mangled_grapheme_value = NULL;
-		GEN_STRING_FOREACH(key, sizeof(cio_internal_vm_mangled_grapheme_keys), cio_internal_vm_mangled_grapheme_keys) {
-			if(*c == *key) {
-				mangled_grapheme_value = cio_internal_vm_mangled_grapheme_values[key - cio_internal_vm_mangled_grapheme_keys];
+        for(size_t j = 0; j < sizeof(cio_internal_vm_mangled_grapheme_keys); ++j) {
+			if(identifier[i] == cio_internal_vm_mangled_grapheme_keys[j]) {
+				mangled_grapheme_value = cio_internal_vm_mangled_grapheme_values[j];
 				break;
 			}
 		}
 
-		if(!mangled_grapheme_value) GEN_ERROR_OUT(GEN_BAD_CONTENT, "Invalid character encountered while mangling symbol");
+		if(!mangled_grapheme_value) return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Invalid character encountered while mangling symbol `%t`: '%c'", identifier, identifier[i]);
 
 		size_t mangled_grapheme_length = 0;
-		error = gen_string_length(mangled_grapheme_value, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &mangled_grapheme_length);
-		GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+		error = gen_string_length(mangled_grapheme_value, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &mangled_grapheme_length);
+		if(error) return error;
 
-		error = grealloc((void**) out_mangled, mangled_length, mangled_length + (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length + 1, sizeof(char));
-		GEN_ERROR_OUT_IF(error, "`grealloc` failed");
+		error = gen_memory_reallocate_zeroed((void**) out_mangled, mangled_length, mangled_length + (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length + 1, sizeof(char));
+		if(error) return error;
 
 		mangled_length += (sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1) + mangled_grapheme_length;
 
 		error = gen_string_append(*out_mangled, mangled_length + 1, cionom_internal_vm_mangled_grapheme_prefix, sizeof(cionom_internal_vm_mangled_grapheme_prefix), sizeof(cionom_internal_vm_mangled_grapheme_prefix) - 1);
-		GEN_ERROR_OUT_IF(error, "`gen_string_append` failed");
+		if(error) return error;
 		error = gen_string_append(*out_mangled, mangled_length + 1, mangled_grapheme_value, mangled_grapheme_length + 1, mangled_grapheme_length);
-		GEN_ERROR_OUT_IF(error, "`gen_string_append` failed");
+		if(error) return error;
 	}
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_resolve_external(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dylib_t lib) {
-	GEN_FRAME_BEGIN(cio_resolve_external);
+static void cio_internal_resolve_external_cleanup_mangled(char** mangled) {
+    if(!*mangled) return;
 
-	GEN_NULL_CHECK(identifier);
-	GEN_NULL_CHECK(out_function);
+    gen_error_t* error = gen_memory_free((void**) mangled);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
 
-	char* mangled = NULL;
-	gen_error_t error = cio_mangle_identifier(identifier, &mangled);
-	GEN_ERROR_OUT_IF(error, "`cio_mangle_identifier` failed");
+gen_error_t* cio_resolve_external(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dynamic_library_handle_t* const restrict lib) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_resolve_external, GEN_FILE_NAME);
+	if(error) return error;
 
-	// glogf(DEBUG, "Attempting to resolve `%s` externally as `%s`...", identifier, mangled);
+	if(!identifier) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`identifier` was `NULL`");
+	if(!out_function) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_function` was `NULL`");
 
-	error = gen_dylib_symbol((void*) out_function, lib, mangled);
-	GEN_ERROR_OUT_IF(error, "`gen_dylib_symbol` failed");
-	error = gfree(mangled);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	GEN_CLEANUP_FUNCTION(cio_internal_resolve_external_cleanup_mangled) char* mangled = NULL;
+	error = cio_mangle_identifier(identifier, &mangled);
+	if(error) return error;
 
-	GEN_ALL_OK;
+    size_t mangled_length = 0;
+    error = gen_string_length(mangled, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &mangled_length);
+	if(error) return error;
+
+	error = gen_dynamic_library_handle_get_symbol(lib, mangled, mangled_length, (void*) out_function);
+	if(error) return error;
+
+	return NULL;
 }

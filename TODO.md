@@ -7,6 +7,8 @@
     - Autogenerate documentation
   - Set up all community guidelines stuff
 - Implementation
+  - Fix all the early-exit memory leaks
+  - Rewrite documentation
   - Write a dissasembler
   - Add `~~~~~^` style markers to diagnostic output
     - Add `cio_glog_column_indicator` to `cionom.c`

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2021 TTG <prs.ttg+cionom@pm.me>
+// Copyright (C) 2022 Emily "TTG" Banerjee <prs.ttg+cionom@pm.me>
 
 #include "cionom.h"
 
@@ -7,14 +7,14 @@
  * Begins a block of runtime library definitions.
  */
 #define CIO_EXTLIB_BEGIN_DEFS \
-    GEN_DIAG_REGION_BEGIN \
-    _Pragma("clang diagnostic ignored \"-Wmissing-prototypes\"")
-    _Pragma("clang diagnostic ignored \"-Wreserved-identifier\"")
+    GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_BEGIN) \
+    GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_IGNORE("-Wmissing-prototypes")) \
+    GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_IGNORE("-Wreserved-identifier")) \
 
 /**
  * Ends a block of runtime library definitions.
  */
-#define CIO_EXTLIB_END_DEFS GEN_DIAG_REGION_END
+#define CIO_EXTLIB_END_DEFS GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_END)
 
 /**
  * Gets a frame and its data into the local frame.
@@ -27,9 +27,9 @@
     const cio_frame_t* name##_frame = NULL; \
 	size_t* name = NULL; \
 	do { \
-        gen_error_t error = cio_vm_get_frame(vm, offset, &name##_frame); \
-        GEN_ERROR_OUT_IF(error, "`cio_vm_get_frame` failed"); \
+        error = cio_vm_get_frame(vm, offset, &name##_frame); \
+        if(error) return error; \
         error = cio_vm_get_frame_pointer(vm, name##_frame, &name); \
-        GEN_ERROR_OUT_IF(error, "`cio_vm_get_frame_pointer` failed"); \
+        if(error) return error; \
     } while(0)
 

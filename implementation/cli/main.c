@@ -1,214 +1,312 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2021 TTG <prs.ttg+cionom@pm.me>
+// Copyright (C) 2022 Emily "TTG" Banerjee <prs.ttg+cionom@pm.me>
 
 #include <cionom.h>
-#include <genargs.h>
-#include <genfs.h>
 
-typedef struct {
-	const char* file;
-	bool debug;
-	bool emit_bytecode;
-	const char* bytecode_file;
-	bool execute_bytecode;
-	size_t routine;
-	size_t stack_length;
-	bool print_mangled_identifier;
-	const char* identifier;
-} cio_cli_args_t;
+#include <genmemory.h>
+#include <genstring.h>
+#include <genarguments.h>
+#include <genfilesystem.h>
+#include <genlog.h>
 
-static const char* const restrict switches[] = {"debug", "emit-bytecode", "execute-bytecode", "stack-length", "print-mangled-identifier"};
+#ifndef CIO_CLI_STACK_LENGTH_FALLBACK
+#define CIO_CLI_STACK_LENGTH_FALLBACK 1024
+#endif
 
-static __nodiscard gen_error_t cio_cli_arg_handler(const gen_arg_type_t type, const size_t arg_n, const char* const restrict parameter, void* const restrict passthrough) {
-	GEN_FRAME_BEGIN(cio_cli_arg_handler);
+#ifndef CIO_CLI_BYTECODE_FILE_FALLBACK
+#define CIO_CLI_BYTECODE_FILE_FALLBACK "a.ibc"
+#endif
 
-	cio_cli_args_t* const args = passthrough;
+typedef enum {
+    CIO_CLI_OPERATION_NONE,
+    CIO_CLI_OPERATION_COMPILE,
+    CIO_CLI_OPERATION_EXECUTE,
+    CIO_CLI_OPERATION_MANGLE
+} cio_cli_operation_t;
 
-	switch(type) {
-		case GEN_ARG_LONG: {
-			switch(arg_n) {
-				case 0: {
-					if(parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--debug` does not take a parameter");
-					args->debug = true;
-					break;
-				}
-				case 1: {
-					args->emit_bytecode = true;
-					args->bytecode_file = parameter ?: "a.ibc";
-					if(!parameter) glog(WARNING, "No output file specified to `--emit-bytecode`, using `a.ibc`");
-					break;
-				}
-				case 2: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--execute-bytecode` expected routine index");
-					args->execute_bytecode = true;
-					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->routine);
-					GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");
-					break;
-				}
-				case 3: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--stack-length` expected stack length");
-					gen_error_t error = gen_string_number(parameter, GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &args->stack_length);
-					GEN_ERROR_OUT_IF(error, "`gen_string_number` failed");
-					break;
-				}
-				case 4: {
-					if(!parameter) GEN_ERROR_OUT(GEN_BAD_CONTENT, "`--print-mangled-identifier` expected identifier to mangle");
-					args->print_mangled_identifier = true;
-					args->identifier = parameter;
-					break;
-				}
-				default: {
-					GEN_ERROR_OUT(GEN_BAD_CONTENT, "Unrecognized parameter");
-				}
-			}
-			break;
-		}
-		case GEN_ARG_SHORT: {
-			GEN_ERROR_OUT(GEN_BAD_CONTENT, "Unrecognized parameter");
-		}
-		case GEN_ARG_RAW: {
-			if(!args->file)
-				args->file = parameter;
-			else
-				GEN_ERROR_OUT(GEN_TOO_LONG, "Passing multiple files is not permitted");
-			break;
-		}
-	}
+typedef enum {
+    CIO_CLI_SWITCH_EMIT_BYTECODE,
+    CIO_CLI_SWITCH_EXECUTE_BYTECODE,
+    CIO_CLI_SWITCH_MANGLE_IDENTIFIER,
+    CIO_CLI_SWITCH_STACK_LENGTH,
+} cio_cli_switch_t;
 
-	GEN_ALL_OK;
-}
+static gen_error_t* gen_main(const size_t argc, const char* const restrict* const restrict argv) {
+    GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
+    if(error) return error;
 
-int main(const int argc, const char* const* const argv) {
-	GEN_FRAME_BEGIN(main);
+    // TODO: `--disassemble` - Disassemble a bytecode file
+    // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly
 
-	cio_cli_args_t args = {0};
+    // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
-	gen_error_t error = gen_parse_args(argc, argv, cio_cli_arg_handler, 0, NULL, sizeof(switches) / sizeof(switches[0]), switches, &args);
-	GEN_REQUIRE_NO_ERROR(error);
+    // TODO: `--debug` - Insert debug info
+    //                   Treat `push0x7F` as a breakpoint
+    //                   Show source if debug info is present on error; Otherwise dissassembly
+    // TODO: `--help` - Print help menu
+    // TODO: `--version` - Print version information
+    // TODO: `--verbose` - Verbose output
 
-	if(!args.file && !args.print_mangled_identifier) {
-		glog(FATAL, "No bytecode file specified");
-		GEN_REQUIRE_NO_REACH;
-	}
-	else if(args.file && args.print_mangled_identifier) {
-		glog(FATAL, "Source file specified when using `--print-mangled-identifier`");
-		GEN_REQUIRE_NO_REACH;
-	}
-	size_t operations = 0;
-	operations += args.emit_bytecode;
-	operations += args.execute_bytecode;
-	operations += args.print_mangled_identifier;
-	if(operations > 1) {
-		glog(FATAL, "Cannot perform multiple operations in the same invocation");
-		GEN_REQUIRE_NO_REACH;
-	}
-	else if(operations < 1) {
-		glog(FATAL, "No operation specified");
-		GEN_REQUIRE_NO_REACH;
-	}
+    // TODO: `--extension=comments` - Allow the suffixing of calls with `|` to ignore the remainder of the line
+    // TODO: `--extension=elide-reserve-space` - Allow calls to be prefixed with @ to prevent the creation of reserve space
+    // TODO: `--extension=bytecode-intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
+    //                                           and `__cionom_reserved_push0x7F` in code for direct control of bytecode
+    //                                           emission
+    // TODO: `--extension=encode-default-routine` - Encodes the default entry point routine for the program in
+    //                                              emitted bytecode. Requires that execution have the same flag.
 
-	if(!args.stack_length && args.execute_bytecode) {
-		args.stack_length = 1024;
-		glogf(WARNING, "`--stack-length` not specified, defaulting to %zu", args.stack_length);
-	}
-	else if(args.stack_length && !args.execute_bytecode) {
-		glog(FATAL, "`--stack-length` specified for non-executing operation");
-		GEN_REQUIRE_NO_REACH;
-	}
+    // TODO: `--fatal-warnings` - Treat warnings as fatal errors
+    // TODO: `--warning=implicit-argument` - Warn for implicit switch arguments such as stack length or file name
+    // TODO: `--warning=erroneous-switch` - Warn for switches passed in scenarios where they take no effect
+    // TODO: `--warning=reserved-encoding` - Warn for calls which result in the reserved encoding `push 0x7F`
+    // TODO: `--warning=reserved-identifier` - Warn for declaring routines which contain `__cionom` in their identifier
+    // TODO: `--warning=parameter-overflow` - Warn for calls which provide a literal greater than the maximum encodable value `0x7F`
 
-	if(args.print_mangled_identifier) {
-		char* mangled = NULL;
-		error = cio_mangle_identifier(args.identifier, &mangled);
-		GEN_REQUIRE_NO_ERROR(error);
-		glogf(INFO, "Result of mangling %s is: `%s`", args.identifier, mangled);
-		error = gfree(mangled);
-		GEN_REQUIRE_NO_ERROR(error);
-	}
-	else {
-		size_t filename_length = 0;
-		error = gen_string_length(args.file, GEN_PATH_MAX + 1, GEN_PATH_MAX, &filename_length);
-		GEN_REQUIRE_NO_ERROR(error);
+    if(!(argc - 1)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "No parameters specified");
 
-		gen_filesystem_handle_t source_handle = {0};
-		error = gen_filesystem_handle_open(&source_handle, args.file);
-		GEN_REQUIRE_NO_ERROR(error);
-		size_t source_length = 0;
-		error = gen_filesystem_handle_size(&source_length, &source_handle);
-		GEN_REQUIRE_NO_ERROR(error);
-		char* source = NULL;
-		error = gzalloc((void**) &source, source_length + 1, sizeof(char));
-		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_filesystem_handle_read((unsigned char*) source, &source_handle, 0, source_length);
-		GEN_REQUIRE_NO_ERROR(error);
-		error = gen_filesystem_handle_close(&source_handle);
-		GEN_REQUIRE_NO_ERROR(error);
+    size_t* argument_lengths = NULL;
+    error = gen_memory_allocate_zeroed((void**) &argument_lengths, argc - 1, sizeof(size_t));
+	if(error) return error;
 
-		if(args.emit_bytecode) {
+    for(size_t i = 0; i < argc - 1; ++i) {
+        error = gen_string_length((argv + 1)[i], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &argument_lengths[i]);
+    	if(error) return error;
+    }
+
+    static const char* const restrict switches[] = {
+        [CIO_CLI_SWITCH_EMIT_BYTECODE] = "emit-bytecode",
+        [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = "execute-bytecode",
+        [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = "mangle-identifier",
+        [CIO_CLI_SWITCH_STACK_LENGTH] = "stack-length"};
+
+    static const size_t switches_lengths[] = {
+        [CIO_CLI_SWITCH_EMIT_BYTECODE] = sizeof("emit-bytecode") - 1,
+        [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = sizeof("execute-bytecode") - 1,
+        [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = sizeof("mangle-identifier") - 1,
+        [CIO_CLI_SWITCH_STACK_LENGTH] = sizeof("stack-length") - 1};
+
+    gen_arguments_parsed_t parsed = {0};
+    error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
+	if(error) return error;
+
+    size_t stack_length = SIZE_MAX;
+    size_t routine_index = 0;
+    const char* file = NULL;
+    size_t file_length = 0;
+
+    cio_cli_operation_t operation = CIO_CLI_OPERATION_NONE;
+
+    for(size_t i = 0; i < parsed.long_argument_count; ++i) {
+        switch(parsed.long_argument_indices[i]) {
+            case CIO_CLI_SWITCH_EMIT_BYTECODE: {
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                if(!parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_EMIT_BYTECODE], CIO_CLI_BYTECODE_FILE_FALLBACK);
+                    if(error) return error;
+
+                    file = CIO_CLI_BYTECODE_FILE_FALLBACK;
+                    file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
+                }
+                else {
+                    file = parsed.long_argument_parameters[i];
+                    file_length = parsed.long_argument_parameter_lengths[i];
+                }
+
+                operation = CIO_CLI_OPERATION_COMPILE;
+
+                break;
+            }
+            case CIO_CLI_SWITCH_EXECUTE_BYTECODE: {
+                if(!parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                operation = CIO_CLI_OPERATION_EXECUTE;
+                error = gen_string_number(parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &routine_index);
+                if(error) return error;
+
+                break;
+            }
+            case CIO_CLI_SWITCH_MANGLE_IDENTIFIER: {
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                operation = CIO_CLI_OPERATION_MANGLE;
+
+                break;
+            }
+            case CIO_CLI_SWITCH_STACK_LENGTH: {
+                if(!parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+                if(stack_length != SIZE_MAX) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+
+                error = gen_string_number(parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &stack_length);
+                if(error) return error;
+
+                break;
+            }
+            default: return gen_error_attach_backtrace(GEN_ERROR_UNKNOWN, GEN_LINE_NUMBER, "Something went wrong while parsing arguments");
+        }
+    }
+
+    switch(operation) {
+        case CIO_CLI_OPERATION_NONE: return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "No operation specified");
+        case CIO_CLI_OPERATION_COMPILE: {
+            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
+            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No source file specified");
+
+            const char* source_file = (argv + 1)[parsed.raw_argument_indices[0]];
+
+            if(stack_length != SIZE_MAX) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` specified to `--%t`", switches[CIO_CLI_SWITCH_STACK_LENGTH], switches[CIO_CLI_SWITCH_EMIT_BYTECODE]);
+                if(error) return error;
+            }
+
+            size_t filename_length = 0;
+            error = gen_string_length(source_file, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &filename_length);
+            if(error) return error;
+
+            gen_filesystem_handle_t source_handle = {0};
+            error = gen_filesystem_handle_open(source_file, argument_lengths[parsed.raw_argument_indices[0]], &source_handle);
+            if(error) return error;
+            size_t source_length = 0;
+            error = gen_filesystem_handle_file_size(&source_handle, &source_length);
+            if(error) return error;
+            char* source = NULL;
+            error = gen_memory_allocate_zeroed((void**) &source, source_length + 1, sizeof(char));
+            if(error) return error;
+            error = gen_filesystem_handle_file_read(&source_handle, 0, source_length, (unsigned char*) source);
+            if(error) return error;
+
 			cio_token_t* tokens = NULL;
 			size_t tokens_length = 0;
 			error = cio_tokenize(source, source_length, &tokens, &tokens_length);
-			GEN_REQUIRE_NO_ERROR(error);
+			if(error) return error;
 
 			cio_program_t program = {0};
-			error = cio_parse(tokens, tokens_length, &program, source, source_length, args.file, filename_length);
-			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_parse(tokens, tokens_length, &program, source, source_length, source_file, filename_length);
+			if(error) return error;
+
+            // for(size_t i = 0; i < program.routines_length; ++i) {
+            //     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|- %t", program.routines[i].identifier);
+            //     for(size_t j = 0; j < program.routines[i].calls_length; ++j) {
+            //         gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|  |- %t", program.routines[i].calls[j].identifier);
+            //         for(size_t k = 0; k < program.routines[i].calls[j].parameters_length; ++k) {
+            //             gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|  |  |- %uz", program.routines[i].calls[j].parameters[k]);
+            //         }
+            //     }
+            // }
 
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
-			error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, args.file, filename_length);
-			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
+			if(error) return error;
 
 			gen_filesystem_handle_t bytecode_file = {0};
 			bool exists = false;
-			error = gen_path_exists(args.bytecode_file, &exists);
-			GEN_REQUIRE_NO_ERROR(error);
+			error = gen_filesystem_path_exists(file, file_length, &exists);
+			if(error) return error;
 			if(!exists) {
-				error = gen_path_create_file(args.bytecode_file);
-				GEN_REQUIRE_NO_ERROR(error);
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
 			}
 			else {
-				error = gen_path_delete(args.bytecode_file);
-				GEN_REQUIRE_NO_ERROR(error);
-				error = gen_path_create_file(args.bytecode_file);
-				GEN_REQUIRE_NO_ERROR(error);
+				error = gen_filesystem_path_delete(file, file_length);
+				if(error) return error;
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
 			}
 			if(bytecode) {
-				error = gen_filesystem_handle_open(&bytecode_file, args.bytecode_file);
-				GEN_REQUIRE_NO_ERROR(error);
-				error = gen_filesystem_handle_write(&bytecode_file, bytecode_length, bytecode);
-				GEN_REQUIRE_NO_ERROR(error);
+				error = gen_filesystem_handle_open(file, file_length, &bytecode_file);
+				if(error) return error;
+				error = gen_filesystem_handle_file_write(&bytecode_file, bytecode, bytecode_length);
+				if(error) return error;
 				error = gen_filesystem_handle_close(&bytecode_file);
-				GEN_REQUIRE_NO_ERROR(error);
+				if(error) return error;
+            }
 
-				error = gfree(bytecode);
-				GEN_REQUIRE_NO_ERROR(error);
-			}
+            break;
+        }
+        case CIO_CLI_OPERATION_EXECUTE: {
+            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
 
-			error = cio_free_program(&program);
-			GEN_REQUIRE_NO_ERROR(error);
+            const char* bytecode_file = NULL;
+            size_t bytecode_file_length = 0;
 
-			if(tokens) {
-				error = gfree(tokens);
-				GEN_REQUIRE_NO_ERROR(error);
-			}
-		}
-		else if(args.execute_bytecode) {
+            if(!parsed.raw_argument_count) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to %t", CIO_CLI_BYTECODE_FILE_FALLBACK);
+                if(error) return error;
+
+                bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;
+                bytecode_file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
+            }
+            else {
+                bytecode_file = argv[parsed.raw_argument_indices[0]];
+                bytecode_file_length = argument_lengths[parsed.raw_argument_indices[0]];
+            }
+
+            if(stack_length == SIZE_MAX) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK);
+                if(error) return error;
+
+                stack_length = CIO_CLI_STACK_LENGTH_FALLBACK;
+            }
+
+            size_t filename_length = 0;
+            error = gen_string_length(bytecode_file, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &filename_length);
+            if(error) return error;
+
+            gen_filesystem_handle_t source_handle = {0};
+            error = gen_filesystem_handle_open(bytecode_file, bytecode_file_length, &source_handle);
+            if(error) return error;
+            size_t source_length = 0;
+            error = gen_filesystem_handle_file_size(&source_handle, &source_length);
+            if(error) return error;
+            char* source = NULL;
+            error = gen_memory_allocate_zeroed((void**) &source, source_length + 1, sizeof(char));
+            if(error) return error;
+            error = gen_filesystem_handle_file_read(&source_handle, 0, source_length, (unsigned char*) source);
+            if(error) return error;
+
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, args.stack_length, &vm);
-			GEN_REQUIRE_NO_ERROR(error);
+			error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, stack_length, &vm);
+			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
-			GEN_REQUIRE_NO_ERROR(error);
+			if(error) return error;
 			error = cio_vm_push(&vm);
-			GEN_REQUIRE_NO_ERROR(error);
-			error = cio_vm_dispatch_call(&vm, args.routine, 0);
-			GEN_REQUIRE_NO_ERROR(error);
+			if(error) return error;
+			error = cio_vm_dispatch_call(&vm, routine_index, 0);
+			if(error) return error;
 
-			error = cio_free_vm(&vm);
-			GEN_REQUIRE_NO_ERROR(error);
-		}
+            break;
+        }
+        case CIO_CLI_OPERATION_MANGLE: {
+            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No identifer specified");
+            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple identifers specified");
 
-		error = gfree(source);
-		GEN_REQUIRE_NO_ERROR(error);
-	}
+            char* mangled = NULL;
+            error = cio_mangle_identifier(argv[parsed.raw_argument_indices[0]], &mangled);
+            if(error) return error;
+
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "Result of mangling \"%t\" is: `%t`", argv[parsed.raw_argument_indices[0]], mangled);
+            if(error) return error;
+
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+int main(const int argc, const char* const* const argv) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) main, GEN_FILE_NAME);
+	if(error) {
+        gen_error_print("cionom-cli", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+
+    error = gen_main((size_t) argc, argv);
+    if(error) {
+        gen_error_print("cionom-cli", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
 }

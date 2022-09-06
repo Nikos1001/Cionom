@@ -1,73 +1,80 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2021 TTG <prs.ttg+cionom@pm.me>
+// Copyright (C) 2022 Emily "TTG" Banerjee <prs.ttg+cionom@pm.me>
 
 #include "include/cionom.h"
 
-gen_error_t cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_vm_dump_stack);
+#include <genmemory.h>
+#include <genstring.h>
 
-	GEN_NULL_CHECK(vm);
+// TODO: Reimplement me
+// gen_error_t* cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
+// 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dump_stack, GEN_FILE_NAME);
+// 	if(error) return error;
 
-	glog(DEBUG, "Stack");
-	GEN_FOREACH_PTR(i, frame, vm->frames_used, vm->frames) {
-		glogf(DEBUG, "├ Frame %zu", i);
-		GEN_FOREACH_PTR(j, stack_entry, frame->height, vm->stack + frame->base) {
-			glogf(DEBUG, "| ├ 0x%zx: %zu", frame->base + j, *stack_entry);
-		}
-	}
+// 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
-	glog(DEBUG, "├ Unused");
-	GEN_FOREACH_PTR(i, stack_entry, vm->stack_length - (vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height), vm->stack + vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height) {
-		glogf(DEBUG, "├ 0x%zx: %zu", vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height + i, *stack_entry);
-	}
+// 	glog(DEBUG, "Stack");
+// 	GEN_FOREACH_PTR(i, frame, vm->frames_used, vm->frames) {
+// 		glogf(DEBUG, "├ Frame %zu", i);
+// 		GEN_FOREACH_PTR(j, stack_entry, frame->height, vm->stack + frame->base) {
+// 			glogf(DEBUG, "| ├ 0x%zx: %zu", frame->base + j, *stack_entry);
+// 		}
+// 	}
 
-	GEN_ALL_OK;
-}
+// 	glog(DEBUG, "├ Unused");
+// 	GEN_FOREACH_PTR(i, stack_entry, vm->stack_length - (vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height), vm->stack + vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height) {
+// 		glogf(DEBUG, "├ 0x%zx: %zu", vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height + i, *stack_entry);
+// 	}
 
-gen_error_t cio_vm_push_frame(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_vm_push_frame);
+// 	return NULL;
+// }
 
-	GEN_NULL_CHECK(vm);
+gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push_frame, GEN_FILE_NAME);
+	if(error) return error;
 
-	if(vm->frames_used >= vm->frames_length) GEN_ERROR_OUT(GEN_OUT_OF_SPACE, "No unused frames available to push");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+
+	if(vm->frames_used >= vm->frames_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_SPACE, GEN_LINE_NUMBER, "No unused frames available to push");
 	if(vm->frames_used) vm->frames[vm->frames_used].base = vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height;
 	++vm->frames_used;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_pop_frame(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_vm_pop_frame);
+gen_error_t* cio_vm_pop_frame(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_pop_frame, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
-	if(!vm->frames_used) GEN_ERROR_OUT(GEN_BAD_OPERATION, "Attemping to pop when no stack frames are active");
+	if(!vm->frames_used) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Attemping to pop when no stack frames are active");
 	--vm->frames_used;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_push(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_vm_push);
+gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
-	if(!vm->frames_used) GEN_ERROR_OUT(GEN_NO_SUCH_OBJECT, "No frame available to push into");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm->frames_used) return gen_error_attach_backtrace(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "No frame available to push into");
 
 	if(vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height < vm->stack_length)
 		++vm->frames[vm->frames_used - 1].height;
 	else
-		GEN_ERROR_OUT(GEN_BAD_OPERATION, "Stack overflow");
+		return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Stack overflow");
 	vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 1] = 0;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
-	GEN_FRAME_BEGIN(cio_internal_vm_execute_routine);
+static gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_internal_vm_execute_routine, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
-
-	gen_error_t error = GEN_OK;
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
 	cio_frame_t* const frame = &vm->frames[vm->frames_used - 1];
 	unsigned char instruction = vm->bytecode[frame->execution_offset];
@@ -80,14 +87,14 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 			// Subtract 1 for reserve space
 			frame->height -= argc - 1;
 			error = cio_vm_dispatch_call(vm, instruction & 0b01111111, argc - 1);
-			GEN_ERROR_OUT_IF(error, "`cio_vm_dispatch_call` failed");
+			if(error) return error;
 			argc = 0;
 		}
 		else {
 			// glogf(DEBUG, "push %d", instruction & 0b01111111);
 
 			error = cio_vm_push(vm);
-			GEN_ERROR_OUT_IF(error, "`cio_vm_push` failed");
+			if(error) return error;
 			vm->stack[frame->base + frame->height - 1] = instruction & 0b01111111;
 			++argc;
 		}
@@ -95,68 +102,71 @@ static __nodiscard gen_error_t cio_internal_vm_execute_routine(cio_vm_t* const r
 	}
 	// glog(DEBUG, "ret");
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc) {
-	GEN_FRAME_BEGIN(cio_vm_dispatch_call);
+gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dispatch_call, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
-	if(callable >= vm->callables_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`callable` was greater than `vm->callables_length`");
+	if(callable >= vm->callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`callable` was greater than `vm->callables_length`");
 
-	gen_error_t error = cio_vm_push_frame(vm);
-	GEN_ERROR_OUT_IF(error, "`cio_vm_push_frame` failed");
+	error = cio_vm_push_frame(vm);
+    if(error) return error;
 
 	// Dispatch call
 	vm->frames[vm->frames_used - 1].height = argc;
 	vm->frames[vm->frames_used - 1].execution_offset = vm->callables_offsets[callable];
 	error = vm->callables[callable](vm);
-	GEN_ERROR_OUT_IF(error, "Routine call failed");
+    if(error) return error;
 
 	error = cio_vm_pop_frame(vm);
-	GEN_ERROR_OUT_IF(error, "`cio_vm_pop_frame` failed");
+    if(error) return error;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
-	GEN_FRAME_BEGIN(cio_vm_initialize_bytecode);
+gen_error_t* cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize_bytecode, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(bytecode);
-	GEN_NULL_CHECK(bytecode_length);
-	GEN_NULL_CHECK(out_instance);
+	if(!bytecode) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode` was `NULL`");
+	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was `NULL`");
+	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
 
 	out_instance->stack_length = stack_length;
-	gen_error_t error = gzalloc((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+	error = gen_memory_allocate_zeroed((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
+    if(error) return error;
 	out_instance->frames_length = stack_length;
-	error = gzalloc((void**) &out_instance->frames, out_instance->frames_length, sizeof(cio_frame_t));
-	GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
-	error = gen_dylib_load(&out_instance->external_lib, "cionom-external");
-	GEN_ERROR_OUT_IF(error, "`gen_dylib_load` failed");
+	error = gen_memory_allocate_zeroed((void**) &out_instance->frames, out_instance->frames_length, sizeof(cio_frame_t));
+    if(error) return error;
+    static const char external_lib_name[] = "cionom-external";
+	error = gen_dynamic_library_handle_open(external_lib_name, sizeof(external_lib_name) - 1, &out_instance->external_lib);
+    if(error) return error;
 
 	out_instance->callables_length = bytecode[0];
 	if(out_instance->callables_length) {
-		error = gzalloc((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
-		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
-		error = gzalloc((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
-		GEN_ERROR_OUT_IF(error, "`gzalloc` failed");
+		error = gen_memory_allocate_zeroed((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
+        if(error) return error;
+		error = gen_memory_allocate_zeroed((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
+        if(error) return error;
 	}
 
 	size_t offset = 1;
 	for(size_t i = 0; i < out_instance->callables_length; ++i) {
 		out_instance->callables[i] = cio_internal_vm_execute_routine;
-		out_instance->callables_offsets[i] = *(uint32_t*) &bytecode[offset];
+		out_instance->callables_offsets[i] = *(const uint32_t*) &bytecode[offset];
 		offset += 4;
 
 		if(out_instance->callables_offsets[i] == UINT32_MAX) {
-			error = cio_resolve_external((char*) &bytecode[offset], &out_instance->callables[i], out_instance->external_lib);
-			GEN_ERROR_OUT_IF(error, "`cio_resolve_external` failed");
+			error = cio_resolve_external((const char*) &bytecode[offset], &out_instance->callables[i], &out_instance->external_lib);
+            if(error) return error;
 
 			size_t stride = 0;
-			error = gen_string_length((char*) &bytecode[offset], GEN_STRING_NO_BOUND, GEN_STRING_NO_BOUND, &stride);
-			GEN_ERROR_OUT_IF(error, "`gen_string_length` failed");
+			error = gen_string_length((const char*) &bytecode[offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+            if(error) return error;
 
 			offset += stride + 1;
 		}
@@ -165,53 +175,56 @@ gen_error_t cio_vm_initialize_bytecode(const unsigned char* const restrict bytec
 	out_instance->bytecode_length = bytecode_length - offset;
 	out_instance->bytecode = bytecode + offset;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_free_vm(const cio_vm_t* const restrict instance) {
-	GEN_FRAME_BEGIN(cio_free_vm);
+gen_error_t* cio_free_vm(cio_vm_t* const restrict instance) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_free_vm, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(instance);
+	if(!instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`instance` was `NULL`");
 
-	gen_error_t error = gfree(instance->stack);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	error = gen_memory_free((void**) &instance->stack);
+    if(error) return error;
 
-	error = gfree(instance->frames);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	error = gen_memory_free((void**) &instance->frames);
+    if(error) return error;
 
-	error = gen_dylib_unload(instance->external_lib);
-	GEN_ERROR_OUT_IF(error, "`gen_dylib_unload` failed");
+	error = gen_dynamic_library_handle_close(instance->external_lib);
+    if(error) return error;
 
-	error = gfree(instance->callables);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	error = gen_memory_free((void**) &instance->callables);
+    if(error) return error;
 
-	error = gfree(instance->callables_offsets);
-	GEN_ERROR_OUT_IF(error, "`gfree` failed");
+	error = gen_memory_free((void**) &instance->callables_offsets);
+    if(error) return error;
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer) {
-	GEN_FRAME_BEGIN(cio_vm_get_frame);
+gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_frame, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
-	GEN_NULL_CHECK(out_pointer);
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!out_pointer) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_pointer` was `NULL`");
 
-	if(frame_offset >= vm->frames_length) GEN_ERROR_OUT(GEN_OUT_OF_BOUNDS, "`frame_offset` was greater than or equal to `vm->frames_length`");
+	if(frame_offset >= vm->frames_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`frame_offset` was greater than or equal to `vm->frames_length`");
 
 	*out_pointer = &vm->frames[vm->frames_used - (frame_offset + 1)];
 
-	GEN_ALL_OK;
+	return NULL;
 }
 
-gen_error_t cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer) {
-	GEN_FRAME_BEGIN(cio_vm_get_frame_pointer);
+gen_error_t* cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_frame_pointer, GEN_FILE_NAME);
+	if(error) return error;
 
-	GEN_NULL_CHECK(vm);
-	GEN_NULL_CHECK(frame);
-	GEN_NULL_CHECK(out_pointer);
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!frame) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`frame` was `NULL`");
+	if(!out_pointer) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_pointer` was `NULL`");
 
 	*out_pointer = &vm->stack[frame->base];
 
-	GEN_ALL_OK;
+	return NULL;
 }
