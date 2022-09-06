@@ -14,5 +14,3 @@ clean: $(CLEAN_TARGETS) clean_cionom
 .PHONY: test
 test: all $(TEST_TARGETS) test_cionom
 
-documentation: all # TODO: Custom CSS on Doxygen
-	doxygen build/documentation/Doxyfile

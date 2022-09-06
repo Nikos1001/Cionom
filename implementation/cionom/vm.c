@@ -6,29 +6,6 @@
 #include <genmemory.h>
 #include <genstring.h>
 
-// TODO: Reimplement me
-// gen_error_t* cio_vm_dump_stack(const cio_vm_t* const restrict vm) {
-// 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dump_stack, GEN_FILE_NAME);
-// 	if(error) return error;
-
-// 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
-
-// 	glog(DEBUG, "Stack");
-// 	GEN_FOREACH_PTR(i, frame, vm->frames_used, vm->frames) {
-// 		glogf(DEBUG, "├ Frame %zu", i);
-// 		GEN_FOREACH_PTR(j, stack_entry, frame->height, vm->stack + frame->base) {
-// 			glogf(DEBUG, "| ├ 0x%zx: %zu", frame->base + j, *stack_entry);
-// 		}
-// 	}
-
-// 	glog(DEBUG, "├ Unused");
-// 	GEN_FOREACH_PTR(i, stack_entry, vm->stack_length - (vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height), vm->stack + vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height) {
-// 		glogf(DEBUG, "├ 0x%zx: %zu", vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height + i, *stack_entry);
-// 	}
-
-// 	return NULL;
-// }
-
 gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push_frame, GEN_FILE_NAME);
 	if(error) return error;
