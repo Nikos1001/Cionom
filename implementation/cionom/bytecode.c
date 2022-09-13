@@ -82,30 +82,21 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 
 		for(size_t i = 0; i < program->routines_length; ++i) {
 			const cio_routine_t* const routine = &program->routines[i];
-			if(routine->external) {
-				size_t identifier_length = 0;
-				error = gen_string_length(routine->identifier, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &identifier_length);
-				if(error) return error;
 
-				error = gen_memory_reallocate_zeroed((void**) &header, header_size, header_size + 4 + identifier_length + 1, sizeof(unsigned char));
-				if(error) return error;
+            size_t identifier_length = 0;
+            error = gen_string_length(routine->identifier, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &identifier_length);
+            if(error) return error;
 
-				*(uint32_t*) &header[header_size] = 0xFFFFFFFF;
+            error = gen_memory_reallocate_zeroed((void**) &header, header_size, header_size + 4 + identifier_length + 1, sizeof(unsigned char));
+            if(error) return error;
 
-				for(size_t j = 0; j < identifier_length + 1; ++j) {
-					header[header_size + j + 4] = (unsigned char) routine->identifier[j];
-				}
+            *(uint32_t*) &header[header_size] = routine->external ? 0xFFFFFFFF : offsets[i];
 
-				header_size += 4 + identifier_length + 1;
-			}
-			else {
-				error = gen_memory_reallocate_zeroed((void**) &header, header_size, header_size + 4, sizeof(unsigned char));
-				if(error) return error;
+            for(size_t j = 0; j < identifier_length + 1; ++j) {
+                header[header_size + j + 4] = (unsigned char) routine->identifier[j];
+            }
 
-				*(uint32_t*) &header[header_size] = offsets[i];
-
-				header_size += 4;
-			}
+            header_size += 4 + identifier_length + 1;
 		}
 	}
 

@@ -140,13 +140,13 @@ gen_error_t* cio_vm_initialize_bytecode(const unsigned char* const restrict byte
 		if(out_instance->callables_offsets[i] == UINT32_MAX) {
 			error = cio_resolve_external((const char*) &bytecode[offset], &out_instance->callables[i], &out_instance->external_lib);
             if(error) return error;
+        }
 
-			size_t stride = 0;
-			error = gen_string_length((const char*) &bytecode[offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
-            if(error) return error;
+        size_t stride = 0;
+        error = gen_string_length((const char*) &bytecode[offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+        if(error) return error;
 
-			offset += stride + 1;
-		}
+        offset += stride + 1;
 	}
 
 	out_instance->bytecode_length = bytecode_length - offset;

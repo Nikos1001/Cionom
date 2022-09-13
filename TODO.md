@@ -7,6 +7,7 @@
     - Autogenerate documentation
   - Set up all community guidelines stuff
 - Implementation
+  - Update Esolang wiki with changes to bytecode + `.cbe` format
   - Fix all the early-exit memory leaks
   - Rewrite documentation
   - Write a dissasembler
