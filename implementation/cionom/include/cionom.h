@@ -146,6 +146,41 @@ typedef struct {
 } cio_frame_t;
 
 /**
+ * A bytecode file consumed by the VM.
+ */
+typedef struct {
+    /**
+     * The bytecode data to execute.
+     */
+    const unsigned char* bytecode;
+    /**
+     * The size of the bytecode data.
+     */
+    size_t size;
+
+    /**
+     * The number of callables.
+     */
+    size_t callables_length;
+    /**
+     * The underlying function for the callables.
+     */
+    cio_routine_function_t* callables;
+    /**
+     * The bytecode buffer index for the callable.
+     */
+    size_t* callables_bytecode_indices;
+    /**
+     * The offsets of the callables.
+     */
+    size_t* callables_offsets;
+    /**
+     * The indices of the callables in their source.
+     */
+    size_t* callables_indices;
+} cio_bytecode_t;
+
+/**
  * The VM state.
  */
 typedef struct cio_vm_t {
@@ -172,26 +207,17 @@ typedef struct cio_vm_t {
     cio_frame_t* frames;
 
     /**
-     * The number of callables.
+     * The bytecode data bundles to execute.
      */
-    size_t callables_length;
+    cio_bytecode_t* bytecode;
     /**
-     * The underlying function for the callables.
-     */
-    cio_routine_function_t* callables;
-    /**
-     * The offsets of the callables.
-     */
-    size_t* callables_offsets;
-
-    /**
-     * The length of the bytecode to execute.
+     * The number of bytecode data bundles to execute.
      */
     size_t bytecode_length;
     /**
-     * The bytecode to execute.
+     * The current bytecode data bundle being executed.
      */
-    const unsigned char* bytecode;
+    size_t current_bytecode;
 
     /**
      * The library handle from which to load externally resolved routines.
@@ -276,6 +302,8 @@ gen_error_t* cio_free_program(cio_program_t* const restrict program);
  */
 gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
 
+gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm);
+
 /**
  * Creates and initializes a VM to execute a bytecode buffer.
  * @param[in] bytecode the bytecode buffer to execute.
@@ -284,7 +312,17 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
  * @param[out] out_instance a pointer to storage for the created VM.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+gen_error_t* cio_vm_bytecode_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+
+/**
+ * Creates and initializes a VM to execute a set of concatonated bytecode buffers.
+ * @param[in] bytecode the bytecode buffer to execute.
+ * @param[in] bytecode_length the length of `bytecode`.
+ * @param[in] stack_length the length of the stack to execute with.
+ * @param[out] out_instance a pointer to storage for the created VM.
+ * @return An error, otherwise `NULL`.
+ */
+gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
 
 /**
  * Destroys a VM.
@@ -301,6 +339,7 @@ gen_error_t* cio_free_vm(cio_vm_t* const restrict instance);
  * @return An error, otherwise `NULL`. 
  */
 gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc);
+
 /**
  * Pushes a new stack frame in a VM.
  * @param[in,out] vm the VM to push a new stack frame in.

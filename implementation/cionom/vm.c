@@ -47,37 +47,45 @@ gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
 	return NULL;
 }
 
-static gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
+#include <genlog.h>
+
+gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_internal_vm_execute_routine, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
+
 	cio_frame_t* const frame = &vm->frames[vm->frames_used - 1];
-	unsigned char instruction = vm->bytecode[frame->execution_offset];
+	unsigned char instruction = vm->bytecode[vm->current_bytecode].bytecode[frame->execution_offset];
+
+    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Commencing execution in BC %uz @ %uz w/ frame %uz", vm->current_bytecode, frame->execution_offset, vm->frames_used - 1);
+
 	size_t argc = 0;
 	while(instruction != 0b11111111) {
+        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc in BC %uz @ %uz", instruction, vm->current_bytecode, frame->execution_offset);
 		if(instruction & 0b10000000) {
-			// glogf(DEBUG, "call %d", instruction & 0b01111111);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %ui", instruction & 0b01111111);
 
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
 			frame->height -= argc - 1;
 			error = cio_vm_dispatch_call(vm, instruction & 0b01111111, argc - 1);
 			if(error) return error;
+            gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Call returned successfully");
 			argc = 0;
 		}
 		else {
-			// glogf(DEBUG, "push %d", instruction & 0b01111111);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %ui", instruction & 0b01111111);
 
 			error = cio_vm_push(vm);
 			if(error) return error;
 			vm->stack[frame->base + frame->height - 1] = instruction & 0b01111111;
 			++argc;
 		}
-		instruction = vm->bytecode[++frame->execution_offset];
+		instruction = vm->bytecode[vm->current_bytecode].bytecode[++frame->execution_offset];
 	}
-	// glog(DEBUG, "ret");
+	gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "ret");
 
 	return NULL;
 }
@@ -87,17 +95,25 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	if(error) return error;
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
-
-	if(callable >= vm->callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`callable` was greater than `vm->callables_length`");
+	if(callable >= vm->bytecode[vm->current_bytecode].callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`callable` was greater than `vm->callables_length`");
 
 	error = cio_vm_push_frame(vm);
     if(error) return error;
 
-	// Dispatch call
+	// Construct call
+    size_t callable_remote_index = vm->bytecode[vm->current_bytecode].callables_indices[callable];
 	vm->frames[vm->frames_used - 1].height = argc;
-	vm->frames[vm->frames_used - 1].execution_offset = vm->callables_offsets[callable];
-	error = vm->callables[callable](vm);
+	vm->frames[vm->frames_used - 1].execution_offset = vm->bytecode[vm->current_bytecode].callables_offsets[callable];
+    size_t old_bytecode = vm->current_bytecode;
+    vm->current_bytecode = vm->bytecode[vm->current_bytecode].callables_bytecode_indices[callable];
+
+    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable] == cio_internal_vm_execute_routine ? "cionom" : "external", callable, (void*) vm->bytecode[vm->current_bytecode].callables[callable], vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
+
+	// Dispatch call
+	error = vm->bytecode[vm->current_bytecode].callables[callable_remote_index](vm);
     if(error) return error;
+
+    vm->current_bytecode = old_bytecode;
 
 	error = cio_vm_pop_frame(vm);
     if(error) return error;
@@ -105,12 +121,12 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	return NULL;
 }
 
-gen_error_t* cio_vm_initialize_bytecode(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize_bytecode, GEN_FILE_NAME);
+gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_bundle_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!bytecode) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode` was `NULL`");
-	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was `NULL`");
+	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was 0");
 	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
 
 	out_instance->stack_length = stack_length;
@@ -123,34 +139,88 @@ gen_error_t* cio_vm_initialize_bytecode(const unsigned char* const restrict byte
 	error = gen_dynamic_library_handle_open(external_lib_name, sizeof(external_lib_name) - 1, &out_instance->external_lib);
     if(error) return error;
 
-	out_instance->callables_length = bytecode[0];
-	if(out_instance->callables_length) {
-		error = gen_memory_allocate_zeroed((void**) &out_instance->callables, out_instance->callables_length, sizeof(cio_routine_function_t));
-        if(error) return error;
-		error = gen_memory_allocate_zeroed((void**) &out_instance->callables_offsets, out_instance->callables_length, sizeof(size_t));
-        if(error) return error;
-	}
+    size_t bytecode_count = 0;
+    const char*** routine_identifiers = NULL;
 
-	size_t offset = 1;
-	for(size_t i = 0; i < out_instance->callables_length; ++i) {
-		out_instance->callables[i] = cio_internal_vm_execute_routine;
-		out_instance->callables_offsets[i] = *(const uint32_t*) &bytecode[offset];
-		offset += 4;
+    for(size_t i = 0; i < bytecode_length; ++i) {
+        error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, bytecode_count, bytecode_count + 1, sizeof(cio_bytecode_t));
+        if(error) return error;
 
-		if(out_instance->callables_offsets[i] == UINT32_MAX) {
-			error = cio_resolve_external((const char*) &bytecode[offset], &out_instance->callables[i], &out_instance->external_lib);
+        error = gen_memory_reallocate_zeroed((void**) &routine_identifiers, bytecode_count, bytecode_count + 1, sizeof(char**));
+        if(error) return error;
+
+        out_instance->bytecode[bytecode_count].callables_length = bytecode[0];
+
+        if(out_instance->bytecode[bytecode_count].callables_length) {
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables, out_instance->bytecode[bytecode_count].callables_length, sizeof(cio_routine_function_t));
+            if(error) return error;
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_offsets, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
+            if(error) return error;
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_bytecode_indices, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
+            if(error) return error;
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_indices, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
             if(error) return error;
         }
 
-        size_t stride = 0;
-        error = gen_string_length((const char*) &bytecode[offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+        error = gen_memory_allocate_zeroed((void**) &routine_identifiers[bytecode_count], out_instance->bytecode[bytecode_count].callables_length, sizeof(char*));
         if(error) return error;
 
-        offset += stride + 1;
-	}
+        size_t offset = 1;
+        for(size_t j = 0; j < out_instance->bytecode[bytecode_count].callables_length; ++j) {
+            out_instance->bytecode[bytecode_count].callables[j] = cio_internal_vm_execute_routine;
+            out_instance->bytecode[bytecode_count].callables_offsets[j] = *(const uint32_t*) &bytecode[i + offset];
+            out_instance->bytecode[bytecode_count].callables_bytecode_indices[j] = bytecode_count;
+            out_instance->bytecode[bytecode_count].callables_indices[j] = j;
+            offset += 4;
 
-	out_instance->bytecode_length = bytecode_length - offset;
-	out_instance->bytecode = bytecode + offset;
+            routine_identifiers[bytecode_count][j] = (const char*) &bytecode[i + offset];
+
+            size_t stride = 0;
+            error = gen_string_length((const char*) &bytecode[i + offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+            if(error) return error;
+
+            offset += stride + 1;
+        }
+
+        out_instance->bytecode[bytecode_count].bytecode = bytecode + offset;
+
+        for(i += offset + out_instance->bytecode[bytecode_count].callables_offsets[out_instance->bytecode[bytecode_count].callables_length - 1]; bytecode[i] != 0xFF; ++i);
+
+        out_instance->bytecode[bytecode_count].size = i - offset;
+
+        ++bytecode_count;
+    }
+
+    for(size_t i = 0; i < bytecode_count; ++i) {
+        for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
+            if(out_instance->bytecode[i].callables_offsets[j] == 0xFFFFFFFF) {
+                for(size_t k = 0; k < bytecode_count; ++k) {
+                    for(size_t l = 0; l < out_instance->bytecode[k].callables_length; ++l) {
+                        if(out_instance->bytecode[k].callables_offsets[l] == 0xFFFFFFFF) continue;
+
+                        bool equal = false;
+                        error = gen_string_compare(routine_identifiers[i][j], GEN_STRING_NO_BOUNDS, routine_identifiers[k][l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
+                        if(error) return error;
+
+                        if(equal) {
+                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", routine_identifiers[i][j], k, out_instance->bytecode[k].callables_offsets[l], l);
+
+                            out_instance->bytecode[i].callables_offsets[j] = out_instance->bytecode[k].callables_offsets[l];
+                            out_instance->bytecode[i].callables_bytecode_indices[j] = k;
+                            out_instance->bytecode[i].callables_indices[j] = l;
+                            goto break2;
+                        }
+                    }
+                }
+
+                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", routine_identifiers[i][j]);
+                error = cio_resolve_external(routine_identifiers[i][j], &out_instance->bytecode[i].callables[j], &out_instance->external_lib);
+                if(error) return error;
+
+                break2: continue;
+            }
+        }
+    }
 
 	return NULL;
 }
@@ -170,10 +240,21 @@ gen_error_t* cio_free_vm(cio_vm_t* const restrict instance) {
 	error = gen_dynamic_library_handle_close(instance->external_lib);
     if(error) return error;
 
-	error = gen_memory_free((void**) &instance->callables);
-    if(error) return error;
+    for(size_t i = 0; i < instance->bytecode_length; ++i) {
+        error = gen_memory_free((void**) &instance->bytecode[i].callables);
+        if(error) return error;
 
-	error = gen_memory_free((void**) &instance->callables_offsets);
+        error = gen_memory_free((void**) &instance->bytecode[i].callables_offsets);
+        if(error) return error;
+
+        error = gen_memory_free((void**) &instance->bytecode[i].callables_bytecode_indices);
+        if(error) return error;
+
+        error = gen_memory_free((void**) &instance->bytecode[i].callables_indices);
+        if(error) return error;
+    }
+
+	error = gen_memory_free((void**) &instance->bytecode);
     if(error) return error;
 
 	return NULL;

@@ -1,0 +1,6 @@
+printn 1
+
+extern 1
+:
+    printn 0
+:

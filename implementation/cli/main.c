@@ -117,6 +117,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 break;
             }
+            
             case CIO_CLI_SWITCH_EXECUTE_BYTECODE: {
                 if(!parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
@@ -184,16 +185,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			cio_program_t program = {0};
 			error = cio_parse(tokens, tokens_length, &program, source, source_length, source_file, filename_length);
 			if(error) return error;
-
-            // for(size_t i = 0; i < program.routines_length; ++i) {
-            //     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|- %t", program.routines[i].identifier);
-            //     for(size_t j = 0; j < program.routines[i].calls_length; ++j) {
-            //         gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|  |- %t", program.routines[i].calls[j].identifier);
-            //         for(size_t k = 0; k < program.routines[i].calls[j].parameters_length; ++k) {
-            //             gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom-cli", "|  |  |- %uz", program.routines[i].calls[j].parameters[k]);
-            //         }
-            //     }
-            // }
 
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
@@ -267,7 +258,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize_bytecode((unsigned char*) source, source_length, stack_length, &vm);
+			error = cio_vm_bundle_initialize((unsigned char*) source, source_length, stack_length, &vm);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
