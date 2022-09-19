@@ -230,7 +230,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 bytecode_file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
             }
             else {
-                bytecode_file = argv[parsed.raw_argument_indices[0]];
+                bytecode_file = (argv + 1)[parsed.raw_argument_indices[0]];
                 bytecode_file_length = argument_lengths[parsed.raw_argument_indices[0]];
             }
 
@@ -240,10 +240,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 stack_length = CIO_CLI_STACK_LENGTH_FALLBACK;
             }
-
-            size_t filename_length = 0;
-            error = gen_string_length(bytecode_file, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &filename_length);
-            if(error) return error;
 
             gen_filesystem_handle_t source_handle = {0};
             error = gen_filesystem_handle_open(bytecode_file, bytecode_file_length, &source_handle);
@@ -275,10 +271,10 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple identifers specified");
 
             char* mangled = NULL;
-            error = cio_mangle_identifier(argv[parsed.raw_argument_indices[0]], &mangled);
+            error = cio_mangle_identifier((argv + 1)[parsed.raw_argument_indices[0]], &mangled);
             if(error) return error;
 
-            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "Result of mangling \"%t\" is: `%t`", argv[parsed.raw_argument_indices[0]], mangled);
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "Result of mangling \"%t\" is: `%t`", (argv + 1)[parsed.raw_argument_indices[0]], mangled);
             if(error) return error;
 
             break;
