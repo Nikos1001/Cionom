@@ -9,6 +9,19 @@
   - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output
-    - Add `cio_glog_column_indicator` to `cionom.c`
   - Reduce allocations
   - Fix naming schema to be more consistent with Genstone (`cio[_internal]_{module}_{name}`)
+  - Bytecode introspection APIs (header introspection, decompose bytecode ops into opcode-operand pairing in a struct)
+    - Make bytecode emission/consumption more readable
+  - Proper diagnostics for missing routine declarations
+  - Fuzzing
+  - Provide examples for every switch in `CLIREFERENCE.md`
+  - Add all docs from Esolang wiki
+    - Routine/Stack indices
+    - Document default packaged library
+    - Add little opener to `README.md`
+  - Provide mechanism for writing to reserve space in-language
+  - Expose bundles in lib API
+  - Warn for/Prevent emission of routines at/beyond offset 0xFFFFFFFF
+  - Document "Source-Only Extensions"
+  - Expose bytecode manipulation in lib API

@@ -35,8 +35,12 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
     if(error) return error;
 
+    // TODO: `--bundle` - Emit a bundled executable for the provided list of bytecode files
+
+    // TODO: `--seeking-execute` - Execute bytecode using a seek-based file consumption mode for VM to allow for very large files
+
     // TODO: `--disassemble` - Disassemble a bytecode file
-    // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly
+    // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly. Can use same tokenizer.
 
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
@@ -47,25 +51,35 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--version` - Print version information
     // TODO: `--verbose` - Verbose output
 
-    // TODO: `--remap` - Redirect exported routine names to be different to their internal names based on a file
+    // TODO: `--mapfile` - Redirect exported routine names to be different to their internal names based on a file. Also contains list of files for constant data under `--extension=constants`
 
-    // TODO: `--extension=comments` - Allow the suffixing of calls with `|` to ignore the remainder of the line
-    // TODO: `--extension=elide-reserve-space` - Allow calls to be prefixed with @ to prevent the creation of reserve space
+    // TODO: `--no-extension-encoding` - Treat the reserved encoding `push 0x7F` as a no-op instead of using it as an extension marker and remove all pushed entries preceeding it
+    // TODO: `--no-extension-marker` - Ignore extensions in the bytecode header
+
+    // TODO: `--extension=elide-reserve-space` - Allow calls to be prefixed with `::` to prevent the creation of reserve space
     // TODO: `--extension=bytecode-intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
     //                                           and `__cionom_reserved_push0x7F` in code for direct control of bytecode
-    //                                           emission
+    //                                           emission (Maybe inline ASM would be better suited here)
     // TODO: `--extension=encode-default-routine` - Encodes the default entry point routine for the program in
     //                                              emitted bytecode
     // TODO: `--extension=elide-parameter-count` - Allow the emission of parameter counts on routine declarations/definitions
+    // TODO: `--extension=constants` - Allows the insertion of files' contents into the module header. Also enables the use of `__cionom_constant*` (Gets a pointer to the constant data at an index)
+    // TODO: `--extension=nil-calls` - Enable the use of `__cionom_nil_call` (Full no-op call, leaves parameters on stack) and `__cionom_nil_call_frame` (Partial no-op call, removes parameters from stack) - must be declared (goes into header extension data)
+    // TODO: `--extension=preprocessor` - Enables a preprocessing step whereby files can be included and text patterns can be replaced (`|include` and `|macro`). Also allow the use of `||` to ignore the remainder of a line
 
     // TODO: `--fatal-warnings` - Treat warnings as fatal errors
     // TODO: `--warning=implicit-switch` - Warn for implicit switches such as stack length or file name
     // TODO: `--warning=erroneous-switch` - Warn for switches passed in scenarios where they take no effect
-    // TODO: `--warning=reserved-encoding` - Warn for calls which result in the reserved encoding `push 0x7F`
+    // TODO: `--warning=emit-reserved-encoding` - Warn for calls which result in the reserved encoding `push 0x7F`
     // TODO: `--warning=reserved-identifier` - Warn for declaring routines which contain `__cionom` in their identifier
     // TODO: `--warning=parameter-overflow` - Warn for calls which provide a literal greater than the maximum encodable value `0x7F`
-    // TODO: `--warning=vm-extension` - Warn for bytecode which contains extensions during execution
+    // TODO: `--warning=header-extension` - Warn for bytecode which contains extensions in its header
+    // TODO: `--warning=bytecode-extension` - Warn for bytecode which contains extensions during execution
     // TODO: `--warning=parameter-count-mismatch` - Warn for calls which provide more parameters than the declaration/definition specifies
+    // TODO: `--warning=unmarked-extension` -  Warn for bytecode which makes use of extensions not denoted in the header
+    // TODO: `--warning=duplicate-extension` - Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect
+    // TODO: `--warning=consume-reserved-encoding` - Warn for consumption of the reserved encoding `push 0x7F`
+    // TODO: `--warning=routine-declared-defined` - Warn for routines which are both declared and defined in the same file
 
     if(!(argc - 1)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "No parameters specified");
 
