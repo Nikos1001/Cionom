@@ -7,20 +7,10 @@
     - Autogenerate documentation
   - Set up all community guidelines stuff
 - Implementation
-  - Update Esolang wiki with changes to bytecode + `.cbe` format
-  - Fix all the early-exit memory leaks
   - Rewrite documentation
-  - Write a dissasembler
   - Add `~~~~~^` style markers to diagnostic output
     - Add `cio_glog_column_indicator` to `cionom.c`
-  - Add AST and Token list cleanup functions 
-    - Ensure they work even after failure to completely tokenize/parse (User calls on failure)
-  - Reduce bytecode size
-    - Fixed width types
-    - Encode instruction type as single bit
-      - Use 7 bits to encode offset into routine table/constant pool
-  - Overall reduce `grealloc`s and `gzalloc`s
-  - Add cleanup function for vm
-    - Fix comment on line 296 of cionom.h to include reference to cleanup
+  - Reduce allocations
+  - Fix naming schema to be more consistent with Genstone (`cio[_internal]_{module}_{name}`)
 - Specification
-  - Rewrite semantics for new stuff
+  - Rewrite

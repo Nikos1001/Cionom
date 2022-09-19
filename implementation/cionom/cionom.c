@@ -105,6 +105,16 @@ static const char* const cio_internal_vm_mangled_grapheme_values[] = {
 	"ampersand"};
 static const char cionom_internal_vm_mangled_grapheme_prefix[] = "__cionom_mangled_grapheme_";
 
+static void cio_internal_mangle_identifier_cleanup_mangled(char** mangled) {
+    if(!*mangled) return;
+
+    gen_error_t* error = gen_memory_free((void**) mangled);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
+
 gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_mangle_identifier, GEN_FILE_NAME);
 	if(error) return error;
@@ -117,7 +127,7 @@ gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char**
 	if(error) return error;
 
 	size_t mangled_length = 0;
-	*out_mangled = NULL;
+    GEN_CLEANUP_FUNCTION(cio_internal_mangle_identifier_cleanup_mangled) char* mangled_cleanup = *out_mangled;
     for(size_t i = 0; i < identifier_length; ++i) {
 		if(identifier[i] == '_' || (identifier[i] >= '0' && identifier[i] <= '9') || (identifier[i] >= 'a' && identifier[i] <= 'z') || (identifier[i] >= 'A' && identifier[i] <= 'Z')) {
 			error = gen_memory_reallocate_zeroed((void**) out_mangled, mangled_length, mangled_length + 2, sizeof(char));
@@ -150,6 +160,8 @@ gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char**
 		error = gen_string_append(*out_mangled, mangled_length + 1, mangled_grapheme_value, mangled_grapheme_length + 1, mangled_grapheme_length);
 		if(error) return error;
 	}
+
+    mangled_cleanup = NULL;
 
 	return NULL;
 }

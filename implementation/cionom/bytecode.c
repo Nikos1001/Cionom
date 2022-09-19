@@ -8,6 +8,26 @@
 
 #include <genlog.h>
 
+static void cio_internal_emit_bytecode_cleanup_offsets(uint32_t** offsets) {
+    if(!*offsets) return;
+
+    gen_error_t* error = gen_memory_free((void**) offsets);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
+
+static void cio_internal_emit_bytecode_cleanup_code(unsigned char** code) {
+    if(!*code) return;
+
+    gen_error_t* error = gen_memory_free((void**) code);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
+
 gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, GEN_UNUSED const size_t source_length, const char* const restrict source_file, GEN_UNUSED const size_t source_file_length) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_emit_bytecode, GEN_FILE_NAME);
 	if(error) return error;
@@ -20,14 +40,14 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 
 	if(program->routines_length > 0b01111111) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Number of routines exceeds maximum allowed by bytecode format");
 
-	uint32_t* offsets = NULL;
+	GEN_CLEANUP_FUNCTION(cio_internal_emit_bytecode_cleanup_offsets) uint32_t* offsets = NULL;
 	if(program->routines_length) {
 		error = gen_memory_allocate_zeroed((void**) &offsets, program->routines_length, sizeof(uint32_t));
 		if(error) return error;
 	}
 
 	size_t code_size = 0;
-	unsigned char* code = NULL;
+	GEN_CLEANUP_FUNCTION(cio_internal_emit_bytecode_cleanup_code) unsigned char* code = NULL;
 	// Codegen
 	{
 		for(size_t i = 0; i < program->routines_length; ++i) {
@@ -71,7 +91,7 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 	}
 
 	size_t header_size = 0;
-	unsigned char* header = NULL;
+	GEN_CLEANUP_FUNCTION(cio_internal_emit_bytecode_cleanup_code) unsigned char* header = NULL;
 
 	// Header
 	{
@@ -103,6 +123,7 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 	*out_bytecode_length = header_size + code_size;
 	error = gen_memory_allocate_zeroed((void**) out_bytecode, *out_bytecode_length, sizeof(unsigned char));
 	if(error) return error;
+    GEN_CLEANUP_FUNCTION(cio_internal_emit_bytecode_cleanup_code) unsigned char* bytecode_cleanup = *out_bytecode;
 
 	error = gen_memory_copy(*out_bytecode, *out_bytecode_length, header, header_size, header_size);
 	if(error) return error;
@@ -112,10 +133,7 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 		if(error) return error;
 	}
 
-	if(offsets) {
-		error = gen_memory_free((void**) &offsets);
-		if(error) return error;
-	}
+    bytecode_cleanup = NULL;
 
 	return NULL;
 }

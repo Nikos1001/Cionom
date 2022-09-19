@@ -30,6 +30,16 @@ static gen_error_t* cio_internal_parse_expect(const cio_token_t* const restrict 
 	return NULL;
 }
 
+static void cio_parse_cleanup_program(cio_program_t** program) {
+    if(!*program) return;
+
+    gen_error_t* error = cio_free_program(*program);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
+
 gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_parse, GEN_FILE_NAME);
 	if(error) return error;
@@ -39,6 +49,8 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 	if(!source_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source_file` was `NULL`");
 
 	if(!tokens) return NULL;
+
+    GEN_CLEANUP_FUNCTION(cio_parse_cleanup_program) cio_program_t* program_cleanup = out_program;
 
     for(size_t i = 0; i < tokens_length; ++i) {
         const cio_token_t* token = &tokens[i];
@@ -96,6 +108,8 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 			}
 		}
 	}
+
+    program_cleanup = NULL;
 
 	return NULL;
 }

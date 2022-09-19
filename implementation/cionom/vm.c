@@ -211,6 +211,7 @@ gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict byteco
         ++bytecode_count;
     }
 
+    // TODO: Get the inner loop cached on the first pass above
     for(size_t i = 0; i < bytecode_count; ++i) {
         for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
             if(out_instance->bytecode[i].callables_offsets[j] == 0xFFFFFFFF) {
@@ -255,31 +256,47 @@ gen_error_t* cio_free_vm(cio_vm_t* const restrict instance) {
 
 	if(!instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`instance` was `NULL`");
 
-	error = gen_memory_free((void**) &instance->stack);
-    if(error) return error;
-
-	error = gen_memory_free((void**) &instance->frames);
-    if(error) return error;
-
-	error = gen_dynamic_library_handle_close(instance->external_lib);
-    if(error) return error;
-
-    for(size_t i = 0; i < instance->bytecode_length; ++i) {
-        error = gen_memory_free((void**) &instance->bytecode[i].callables);
-        if(error) return error;
-
-        error = gen_memory_free((void**) &instance->bytecode[i].callables_offsets);
-        if(error) return error;
-
-        error = gen_memory_free((void**) &instance->bytecode[i].callables_bytecode_indices);
-        if(error) return error;
-
-        error = gen_memory_free((void**) &instance->bytecode[i].callables_indices);
+    if(instance->stack) {
+        error = gen_memory_free((void**) &instance->stack);
         if(error) return error;
     }
 
-	error = gen_memory_free((void**) &instance->bytecode);
-    if(error) return error;
+    if(instance->frames) {
+        error = gen_memory_free((void**) &instance->frames);
+        if(error) return error;
+    }
+
+    if(instance->external_lib) {
+        error = gen_dynamic_library_handle_close(instance->external_lib);
+        if(error) return error;
+    }
+
+    for(size_t i = 0; i < instance->bytecode_length; ++i) {
+        if(instance->bytecode[i].callables) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables);
+            if(error) return error;
+        }
+
+        if(instance->bytecode[i].callables_offsets) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables_offsets);
+            if(error) return error;
+        }
+
+        if(instance->bytecode[i].callables_bytecode_indices) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables_bytecode_indices);
+            if(error) return error;
+        }
+
+        if(instance->bytecode[i].callables_indices) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables_indices);
+            if(error) return error;
+        }
+    }
+
+    if(instance->bytecode) {
+        error = gen_memory_free((void**) &instance->bytecode);
+        if(error) return error;
+    }
 
 	return NULL;
 }

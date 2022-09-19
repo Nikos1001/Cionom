@@ -5,9 +5,15 @@
 
 #include <genmemory.h>
 
-#define CIO_INTERNAL_TOKENIZER_ADVANCE (c = source[++offset])
-#define CIO_INTERNAL_TOKENIZER_IS_WHITESPACE (c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')
-#define CIO_INTERNAL_TOKENIZER_IS_NUMBER (c >= '0' && c <= '9')
+static void cio_internal_tokenize_cleanup_tokens(cio_token_t** tokens) {
+    if(!*tokens) return;
+
+    gen_error_t* error = gen_memory_free((void**) tokens);
+    if(error) {
+        gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
+        gen_error_abort();
+    }
+}
 
 gen_error_t* cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_tokenize, GEN_FILE_NAME);
@@ -17,15 +23,14 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 	if(!out_tokens) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens` was `NULL`");
 	if(!out_tokens_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens_length` was `NULL`");
 
-	*out_tokens = NULL;
-	*out_tokens_length = 0;
-
 	size_t offset = 0;
 	char c = source[offset];
 
+    GEN_CLEANUP_FUNCTION(cio_internal_tokenize_cleanup_tokens) cio_token_t* tokens_cleanup = *out_tokens;
+
 	do {
-		if(CIO_INTERNAL_TOKENIZER_IS_WHITESPACE) {
-			CIO_INTERNAL_TOKENIZER_ADVANCE;
+		if((c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')) {
+			(c = source[++offset]);
 			continue;
 		}
 
@@ -38,26 +43,28 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 		if(c == ':') {
 			token->type = CIO_TOKEN_BLOCK;
 			token->length = 1;
-			CIO_INTERNAL_TOKENIZER_ADVANCE;
+			(c = source[++offset]);
 			continue;
 		}
-		else if(CIO_INTERNAL_TOKENIZER_IS_NUMBER) {
+		else if((c >= '0' && c <= '9')) {
 			token->type = CIO_TOKEN_NUMBER;
 			do {
-				CIO_INTERNAL_TOKENIZER_ADVANCE;
-			} while(CIO_INTERNAL_TOKENIZER_IS_NUMBER);
+				(c = source[++offset]);
+			} while((c >= '0' && c <= '9'));
 			token->length = offset - token->offset;
 			continue;
 		}
 		else {
 			token->type = CIO_TOKEN_IDENTIFIER;
 			do {
-				CIO_INTERNAL_TOKENIZER_ADVANCE;
-			} while(!CIO_INTERNAL_TOKENIZER_IS_WHITESPACE);
+				(c = source[++offset]);
+			} while(!(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r'));
 			token->length = offset - token->offset;
 			continue;
 		}
 	} while(offset < source_length);
+
+    tokens_cleanup = NULL;
 
 	return NULL;
 }
