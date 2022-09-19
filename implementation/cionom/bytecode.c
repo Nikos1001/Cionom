@@ -18,7 +18,7 @@ gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsi
 	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
 	if(!source_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source_file` was `NULL`");
 
-	if(program->routines_length >= 0b01111111) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Number of routines exceeds maximum allowed by bytecode format");
+	if(program->routines_length > 0b01111111) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Number of routines exceeds maximum allowed by bytecode format");
 
 	uint32_t* offsets = NULL;
 	if(program->routines_length) {

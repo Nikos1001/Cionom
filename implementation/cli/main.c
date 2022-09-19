@@ -47,20 +47,25 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--version` - Print version information
     // TODO: `--verbose` - Verbose output
 
+    // TODO: `--remap` - Redirect exported routine names to be different to their internal names based on a file
+
     // TODO: `--extension=comments` - Allow the suffixing of calls with `|` to ignore the remainder of the line
     // TODO: `--extension=elide-reserve-space` - Allow calls to be prefixed with @ to prevent the creation of reserve space
     // TODO: `--extension=bytecode-intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
     //                                           and `__cionom_reserved_push0x7F` in code for direct control of bytecode
     //                                           emission
     // TODO: `--extension=encode-default-routine` - Encodes the default entry point routine for the program in
-    //                                              emitted bytecode. Requires that execution have the same flag.
+    //                                              emitted bytecode
+    // TODO: `--extension=elide-parameter-count` - Allow the emission of parameter counts on routine declarations/definitions
 
     // TODO: `--fatal-warnings` - Treat warnings as fatal errors
-    // TODO: `--warning=implicit-argument` - Warn for implicit switch arguments such as stack length or file name
+    // TODO: `--warning=implicit-switch` - Warn for implicit switches such as stack length or file name
     // TODO: `--warning=erroneous-switch` - Warn for switches passed in scenarios where they take no effect
     // TODO: `--warning=reserved-encoding` - Warn for calls which result in the reserved encoding `push 0x7F`
     // TODO: `--warning=reserved-identifier` - Warn for declaring routines which contain `__cionom` in their identifier
     // TODO: `--warning=parameter-overflow` - Warn for calls which provide a literal greater than the maximum encodable value `0x7F`
+    // TODO: `--warning=vm-extension` - Warn for bytecode which contains extensions during execution
+    // TODO: `--warning=parameter-count-mismatch` - Warn for calls which provide more parameters than the declaration/definition specifies
 
     if(!(argc - 1)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "No parameters specified");
 
