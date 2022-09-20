@@ -273,7 +273,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_bundle_initialize((unsigned char*) source, source_length, stack_length, &vm);
+			error = cio_vm_initialize((unsigned char*) source, source_length, stack_length, &vm);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);

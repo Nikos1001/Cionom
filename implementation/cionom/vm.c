@@ -55,8 +55,8 @@ gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
 	return NULL;
 }
 
-gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_internal_vm_execute_routine, GEN_FILE_NAME);
+gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_internal_execute_routine, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
@@ -126,7 +126,7 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
     vm->current_bytecode = vm->bytecode[vm->current_bytecode].callables_bytecode_indices[callable];
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable] == cio_internal_vm_execute_routine ? "cionom" : "external", callable, (void*) vm->bytecode[vm->current_bytecode].callables[callable], vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
+    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable] == cio_vm_internal_execute_routine ? "cionom" : "external", callable, (void*) vm->bytecode[vm->current_bytecode].callables[callable], vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
 #endif
 
 	// Dispatch call
@@ -141,8 +141,8 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	return NULL;
 }
 
-gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_bundle_initialize, GEN_FILE_NAME);
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!bytecode) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode` was `NULL`");
@@ -187,7 +187,7 @@ gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict byteco
 
         size_t offset = 1;
         for(size_t j = 0; j < out_instance->bytecode[bytecode_count].callables_length; ++j) {
-            out_instance->bytecode[bytecode_count].callables[j] = cio_internal_vm_execute_routine;
+            out_instance->bytecode[bytecode_count].callables[j] = cio_vm_internal_execute_routine;
             out_instance->bytecode[bytecode_count].callables_offsets[j] = *(const uint32_t*) &bytecode[i + offset];
             out_instance->bytecode[bytecode_count].callables_bytecode_indices[j] = bytecode_count;
             out_instance->bytecode[bytecode_count].callables_indices[j] = j;
@@ -250,8 +250,8 @@ gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict byteco
 	return NULL;
 }
 
-gen_error_t* cio_free_vm(cio_vm_t* const restrict instance) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_free_vm, GEN_FILE_NAME);
+gen_error_t* cio_vm_free(cio_vm_t* const restrict instance) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_free, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`instance` was `NULL`");

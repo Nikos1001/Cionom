@@ -5,7 +5,7 @@
 
 #include <genmemory.h>
 
-static void cio_internal_tokenize_cleanup_tokens(cio_token_t** tokens) {
+static void cio_tokenize_internal_cleanup_tokens(cio_token_t** tokens) {
     if(!*tokens) return;
 
     gen_error_t* error = gen_memory_free((void**) tokens);
@@ -26,7 +26,7 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 	size_t offset = 0;
 	char c = source[offset];
 
-    GEN_CLEANUP_FUNCTION(cio_internal_tokenize_cleanup_tokens) cio_token_t* tokens_cleanup = *out_tokens;
+    GEN_CLEANUP_FUNCTION(cio_tokenize_internal_cleanup_tokens) cio_token_t* tokens_cleanup = *out_tokens;
 
 	do {
 		if((c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')) {

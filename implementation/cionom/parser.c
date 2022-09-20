@@ -7,8 +7,8 @@
 #include <genmemory.h>
 #include <genlog.h>
 
-static gen_error_t* cio_internal_parse_expect(const cio_token_t* const restrict token, const cio_token_type_t expected, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_internal_parse_expect, GEN_FILE_NAME);
+static gen_error_t* cio_parse_internal_expect(const cio_token_t* const restrict token, const cio_token_type_t expected, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_parse_internal_expect, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!token) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`token` was `NULL`");
@@ -30,10 +30,10 @@ static gen_error_t* cio_internal_parse_expect(const cio_token_t* const restrict 
 	return NULL;
 }
 
-static void cio_parse_cleanup_program(cio_program_t** program) {
+static void cio_parse_internal_cleanup_program(cio_program_t** program) {
     if(!*program) return;
 
-    gen_error_t* error = cio_free_program(*program);
+    gen_error_t* error = cio_program_free(*program);
     if(error) {
         gen_error_print("cionom", error, GEN_ERROR_SEVERITY_FATAL);
         gen_error_abort();
@@ -50,12 +50,12 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 
 	if(!tokens) return NULL;
 
-    GEN_CLEANUP_FUNCTION(cio_parse_cleanup_program) cio_program_t* program_cleanup = out_program;
+    GEN_CLEANUP_FUNCTION(cio_parse_internal_cleanup_program) cio_program_t* program_cleanup = out_program;
 
     for(size_t i = 0; i < tokens_length; ++i) {
         const cio_token_t* token = &tokens[i];
 
-		error = cio_internal_parse_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
+		error = cio_parse_internal_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
 		if(error) return error;
 		error = gen_memory_reallocate_zeroed((void**) &out_program->routines, out_program->routines_length, out_program->routines_length + 1, sizeof(cio_routine_t));
 		if(error) return error;
@@ -68,7 +68,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
         if(!(i + 1 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
         token = &tokens[++i];
 
-		error = cio_internal_parse_expect(token, CIO_TOKEN_NUMBER, source, source_length, source_file, source_file_length);
+		error = cio_parse_internal_expect(token, CIO_TOKEN_NUMBER, source, source_length, source_file, source_file_length);
 		if(error) return error;
 		error = gen_string_number(source + token->offset, source_length - token->offset, token->length, &routine->parameters);
 		if(error) return error;
@@ -83,7 +83,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
         token = &tokens[i];
 
 		while(token->type != CIO_TOKEN_BLOCK) {
-			error = cio_internal_parse_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
+			error = cio_parse_internal_expect(token, CIO_TOKEN_IDENTIFIER, source, source_length, source_file, source_file_length);
 			if(error) return error;
 			error = gen_memory_reallocate_zeroed((void**) &routine->calls, routine->calls_length, routine->calls_length + 1, sizeof(cio_call_t));
 			if(error) return error;
@@ -114,8 +114,8 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 	return NULL;
 }
 
-gen_error_t* cio_free_program(cio_program_t* const restrict program) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_free_program, GEN_FILE_NAME);
+gen_error_t* cio_program_free(cio_program_t* const restrict program) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_program_free, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!program) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`program` was `NULL`");

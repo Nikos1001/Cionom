@@ -226,6 +226,18 @@ typedef struct cio_vm_t {
 } cio_vm_t;
 
 /**
+ * A bytecode instruction
+ */
+typedef struct GEN_PACKED {
+    enum {
+        CIO_PUSH,
+        CIO_CALL,
+
+        CIO_RET = CIO_CALL
+    } opcode;
+} cio_instruction_t;
+
+/**
  * Gets the line number from an offset into a source buffer.
  * @param[in] offset the offset to get line number from.
  * @param[out] out_line a pointer to storage for the line number.
@@ -273,7 +285,7 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
  * Parses a token buffer into a program representation.
  * @param[in] tokens the token buffer to parse.
  * @param[in] tokens_length the length of the token buffer to parse.
- * @param[out] out_program a pointer to storage for the program representation. Must freed with `cio_free_program`.
+ * @param[out] out_program a pointer to storage for the program representation. Must freed with `cio_program_free`.
  * @param[in] source the source buffer from which the token buffer was tokenized.
  * @param[in] source_length the length of the source buffer from which the token buffer was tokenized.
  * @param[in] source_file file name from which the source buffer was read.
@@ -287,7 +299,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
  * @param[in,out] program the program to free.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_free_program(cio_program_t* const restrict program);
+gen_error_t* cio_program_free(cio_program_t* const restrict program);
 
 /**
  * Emits executable bytecode for a program representation.
@@ -322,14 +334,14 @@ gen_error_t* cio_vm_bytecode_initialize(const unsigned char* const restrict byte
  * @param[out] out_instance a pointer to storage for the created VM.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_vm_bundle_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
 
 /**
  * Destroys a VM.
  * @param[in,out] instance the VM instance to destroy.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_free_vm(cio_vm_t* const restrict instance);
+gen_error_t* cio_vm_free(cio_vm_t* const restrict instance);
 
 /**
  * Dispatches a call to a callable in a VM.
