@@ -37,8 +37,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
     // TODO: `--bundle` - Emit a bundled executable for the provided list of bytecode files
 
-    // TODO: `--seeking-execute` - Execute bytecode using a seek-based file consumption mode for VM to allow for very large files
-
     // TODO: `--disassemble` - Disassemble a bytecode file
     // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly. Can use same tokenizer.
 
@@ -207,7 +205,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
-			error = cio_bytecode_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
+			error = cio_module_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
 			if(error) return error;
 
 			gen_filesystem_handle_t bytecode_file = {0};

@@ -9,17 +9,13 @@
   - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output
-  - Reduce allocations
-  - Bytecode introspection APIs (header introspection, decompose bytecode ops into opcode-operand pairing in a struct)
-    - Make bytecode emission/consumption more readable
-  - Proper diagnostics for missing routine declarations
+  - Decompose header data structure into usable data
+    - Extension data
   - Fuzzing
   - Add all docs from Esolang wiki
     - Routine/Stack indices
     - Document default packaged library
     - Add little opener to `README.md`
-  - Provide mechanism for writing to reserve space in-language
   - Expose bundles in lib API
   - Warn for/Prevent emission of routines at/beyond offset 0xFFFFFFFF
   - Document "Source-Only Extensions"
-  - Expose bytecode manipulation in lib API

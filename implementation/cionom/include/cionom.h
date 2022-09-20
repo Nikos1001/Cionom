@@ -226,16 +226,70 @@ typedef struct cio_vm_t {
 } cio_vm_t;
 
 /**
+ * Routine offset denoting an external routine.
+ */
+#define CIO_ROUTINE_EXTERNAL 0xFFFFFFFF
+
+/**
+ * An entry in a bytecode module's header.
+ */
+typedef struct GEN_PACKED {
+    /**
+     * The offset of this routine into the code section.
+     * Will be `CIO_ROUTINE_EXTERNAL` for external routines.
+     */
+    uint32_t offset;
+
+    /**
+     * The name of this routine as a C-string.
+     */
+    char name[];
+} cio_routine_table_entry_t;
+
+/**
+ * The header for a bytecode module.
+ * This only works for non-extended headers - if the `reserved` field is set the header must be decomposed by a separate API.
+ */
+typedef struct {
+    /**
+     * The length of the routine table.
+     */
+    uint8_t routine_table_length : 7;
+
+    /**
+     * Implementation-reserved bit.
+     */
+    uint8_t reserved : 1;
+
+    /**
+     * The routine table.
+     * This represents an array of `cio_routine_table_entry_t`.
+     */
+    uint8_t routine_table[];
+} cio_header_t;
+
+/**
+ * The maximum value of the operand to an instruction.
+ */
+#define CIO_OPERAND_MAX 0b01111111
+
+/**
  * A bytecode instruction
  */
 typedef struct GEN_PACKED {
+    /**
+     * The operand to the instruction.
+     */
+    uint8_t operand : 7;
+    /**
+     * The opcode of the instruction.
+     */
     enum {
         CIO_PUSH,
         CIO_CALL,
 
         CIO_RET = CIO_CALL
     } opcode : 1;
-    uint8_t operand : 7;
 } cio_instruction_t;
 
 /**
@@ -313,7 +367,7 @@ gen_error_t* cio_program_free(cio_program_t* const restrict program);
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_bytecode_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
 
 gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
 

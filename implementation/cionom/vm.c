@@ -14,6 +14,8 @@
 #include <genlog.h>
 #endif
 
+// TODO: Fix VM with nicer bytecode and header decomposition
+
 gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push_frame, GEN_FILE_NAME);
 	if(error) return error;
@@ -149,6 +151,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was 0");
 	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
 
+    // TODO: Find a way to reduce the massive number of allocations and duplications happening in vm init
+
 	out_instance->stack_length = stack_length;
 	error = gen_memory_allocate_zeroed((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
     if(error) return error;
@@ -214,10 +218,10 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     // TODO: Get the inner loop cached on the first pass above
     for(size_t i = 0; i < bytecode_count; ++i) {
         for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
-            if(out_instance->bytecode[i].callables_offsets[j] == 0xFFFFFFFF) {
+            if(out_instance->bytecode[i].callables_offsets[j] == CIO_ROUTINE_EXTERNAL) {
                 for(size_t k = 0; k < bytecode_count; ++k) {
                     for(size_t l = 0; l < out_instance->bytecode[k].callables_length; ++l) {
-                        if(out_instance->bytecode[k].callables_offsets[l] == 0xFFFFFFFF) continue;
+                        if(out_instance->bytecode[k].callables_offsets[l] == CIO_ROUTINE_EXTERNAL) continue;
 
                         bool equal = false;
                         error = gen_string_compare(routine_identifiers[i][j], GEN_STRING_NO_BOUNDS, routine_identifiers[k][l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
