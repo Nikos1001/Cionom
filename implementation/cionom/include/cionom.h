@@ -234,7 +234,8 @@ typedef struct GEN_PACKED {
         CIO_CALL,
 
         CIO_RET = CIO_CALL
-    } opcode;
+    } opcode : 1;
+    uint8_t operand : 7;
 } cio_instruction_t;
 
 /**
@@ -312,9 +313,9 @@ gen_error_t* cio_program_free(cio_program_t* const restrict program);
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_emit_bytecode(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+gen_error_t* cio_bytecode_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
 
-gen_error_t* cio_internal_vm_execute_routine(cio_vm_t* const restrict vm);
+gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
 
 /**
  * Creates and initializes a VM to execute a bytecode buffer.

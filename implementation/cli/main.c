@@ -207,7 +207,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
-			error = cio_emit_bytecode(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
+			error = cio_bytecode_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
 			if(error) return error;
 
 			gen_filesystem_handle_t bytecode_file = {0};
