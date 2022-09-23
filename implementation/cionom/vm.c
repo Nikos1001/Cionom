@@ -164,19 +164,17 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     if(error) return error;
 
     size_t bytecode_count = 0;
-    const char*** routine_identifiers = NULL;
 
     for(size_t i = 0; i < bytecode_length; ++i) {
         error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, bytecode_count, bytecode_count + 1, sizeof(cio_bytecode_t));
-        if(error) return error;
-
-        error = gen_memory_reallocate_zeroed((void**) &routine_identifiers, bytecode_count, bytecode_count + 1, sizeof(char**));
         if(error) return error;
 
         out_instance->bytecode[bytecode_count].callables_length = bytecode[0];
 
         if(out_instance->bytecode[bytecode_count].callables_length) {
             error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables, out_instance->bytecode[bytecode_count].callables_length, sizeof(cio_routine_function_t));
+            if(error) return error;
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_names, out_instance->bytecode[bytecode_count].callables_length, sizeof(char*));
             if(error) return error;
             error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_offsets, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
             if(error) return error;
@@ -186,9 +184,6 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             if(error) return error;
         }
 
-        error = gen_memory_allocate_zeroed((void**) &routine_identifiers[bytecode_count], out_instance->bytecode[bytecode_count].callables_length, sizeof(char*));
-        if(error) return error;
-
         size_t offset = 1;
         for(size_t j = 0; j < out_instance->bytecode[bytecode_count].callables_length; ++j) {
             out_instance->bytecode[bytecode_count].callables[j] = cio_vm_internal_execute_routine;
@@ -196,8 +191,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             out_instance->bytecode[bytecode_count].callables_bytecode_indices[j] = bytecode_count;
             out_instance->bytecode[bytecode_count].callables_indices[j] = j;
             offset += 4;
-
-            routine_identifiers[bytecode_count][j] = (const char*) &bytecode[i + offset];
+            out_instance->bytecode[bytecode_count].callables_names[j] = (const char*) &bytecode[i + offset];
 
             size_t stride = 0;
             error = gen_string_length((const char*) &bytecode[i + offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
@@ -224,12 +218,12 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                         if(out_instance->bytecode[k].callables_offsets[l] == CIO_ROUTINE_EXTERNAL) continue;
 
                         bool equal = false;
-                        error = gen_string_compare(routine_identifiers[i][j], GEN_STRING_NO_BOUNDS, routine_identifiers[k][l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
+                        error = gen_string_compare(out_instance->bytecode[i].callables_names[j], GEN_STRING_NO_BOUNDS, out_instance->bytecode[k].callables_names[l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
                         if(error) return error;
 
                         if(equal) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", routine_identifiers[i][j], k, out_instance->bytecode[k].callables_offsets[l], l);
+                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables_names[j], k, out_instance->bytecode[k].callables_offsets[l], l);
 #endif
 
                             out_instance->bytecode[i].callables_offsets[j] = out_instance->bytecode[k].callables_offsets[l];
@@ -241,9 +235,9 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 }
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", routine_identifiers[i][j]);
+                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables_names[j]);
 #endif
-                error = cio_resolve_external(routine_identifiers[i][j], &out_instance->bytecode[i].callables[j], &out_instance->external_lib);
+                error = cio_resolve_external(out_instance->bytecode[i].callables_names[j], &out_instance->bytecode[i].callables[j], &out_instance->external_lib);
                 if(error) return error;
 
                 break2: continue;
@@ -278,6 +272,11 @@ gen_error_t* cio_vm_free(cio_vm_t* const restrict instance) {
     for(size_t i = 0; i < instance->bytecode_length; ++i) {
         if(instance->bytecode[i].callables) {
             error = gen_memory_free((void**) &instance->bytecode[i].callables);
+            if(error) return error;
+        }
+
+        if(instance->bytecode[i].callables_names) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables_names);
             if(error) return error;
         }
 

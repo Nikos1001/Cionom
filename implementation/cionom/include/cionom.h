@@ -159,6 +159,10 @@ typedef struct {
     size_t size;
 
     /**
+     * The names of the callables.
+     */
+    const char** callables_names;
+    /**
      * The number of callables.
      */
     size_t callables_length;
