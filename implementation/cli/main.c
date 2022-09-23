@@ -48,9 +48,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
-    // TODO: `--debug` - Insert debug info
-    //                   Treat `push0x7F` as a breakpoint
-    //                   Show source if debug info is present on error; Otherwise dissassembly
     // TODO: `--help` - Print help menu
     // TODO: `--version` - Print version information
     // TODO: `--verbose` - Verbose output
@@ -70,6 +67,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--extension=constants` - Allows the insertion of files' contents into the module header. Also enables the use of `__cionom_constant*` (Gets a pointer to the constant data at an index)
     // TODO: `--extension=nil-calls` - Enable the use of `__cionom_nil_call` (Full no-op call, leaves parameters on stack) and `__cionom_nil_call_frame` (Partial no-op call, removes parameters from stack) - must be declared (goes into header extension data)
     // TODO: `--extension=preprocessor` - Enables a preprocessing step whereby files can be included and text patterns can be replaced (`|include` and `|macro`). Also allow the use of `||` to ignore the remainder of a line
+    // TODO: `--extension=breakpoints` - Enables the use of breakpoints to call back to a debugger attached to a running program
+    // TODO: `--extension=debug-info` - Allows the insertion of extra information about the program into the header to aid in debugging
 
     // TODO: `--fatal-warnings` - Treat warnings as fatal errors
     // TODO: `--warning=implicit-switch` - Warn for implicit switches such as stack length or file name

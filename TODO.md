@@ -20,3 +20,8 @@
   - Expose bundles in lib API
   - Warn for/Prevent emission of routines at/beyond offset 0xFFFFFFFF
   - Document "Source-Only Extensions"
+  - Debugger
+    - Breakponts
+    - Debug info
+    - Disassembly
+  - Document debug info format

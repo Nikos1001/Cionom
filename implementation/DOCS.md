@@ -62,6 +62,8 @@ Elide Reserve Space|`--extension=elide-reserve-space`|`0`|-|-|Allows the VM to b
 Encode Default Routine|`--extension=encode-default-routine`|`1`|The default routine index|-|Informs the VM of the default/entry point routine index for the bytecode module. In [bundled executables](#Executable-Bundles) this only applies to the first module in the bundle
 Constants|`--extension=constants`|`2`|The constant data|-|Allows the insertion of file contents into the module header. This may be listed multiple times to embed multiple files
 Nil Calls|`--extension=nil-calls`|`3`|The routine indices for `__cionom_extension_nil_call` and `__cionom_extension_nil_call_frame`|-|Allows the insertion of full/partial no-op calls
+Breakpoints|`--extension=breakpoints`|`4`|-|-|Allows halting of code execution to return to a debugger attached to a running program
+Debug Info|`--extension=debug-info`|5|The debug info|-|Allows the insertion of extra information into the module header to aid with debugging
 
 ### Code
 The encoding `push 0x7F` is reserved for use by the implementation. The reference implementation uses this to provide extension mechanisms without modifying the existing bytecode format.
