@@ -158,10 +158,16 @@ typedef struct {
      */
     size_t size;
 
+    // TODO: Maybe pull out callable into its own struct
+
     /**
      * The names of the callables.
      */
     const char** callables_names;
+    /**
+     * The lengths of the names of the callables.
+     */
+    size_t* callables_names_lengths;
     /**
      * The number of callables.
      */

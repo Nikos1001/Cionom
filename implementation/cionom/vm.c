@@ -182,6 +182,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             if(error) return error;
             error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_indices, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
             if(error) return error;
+            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables_names_lengths, out_instance->bytecode[bytecode_count].callables_length, sizeof(size_t));
+            if(error) return error;
         }
 
         size_t offset = 1;
@@ -197,6 +199,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             error = gen_string_length((const char*) &bytecode[i + offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
             if(error) return error;
 
+            out_instance->bytecode[bytecode_count].callables_names_lengths[j] = stride;
+
             offset += stride + 1;
         }
 
@@ -204,7 +208,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
         for(i += offset + out_instance->bytecode[bytecode_count].callables_offsets[out_instance->bytecode[bytecode_count].callables_length - 1]; bytecode[i] != 0xFF; ++i);
 
-        out_instance->bytecode[bytecode_count].size = i - offset;
+        out_instance->bytecode[bytecode_count].size = (i - offset) + 1;
 
         ++bytecode_count;
     }
@@ -244,6 +248,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             }
         }
     }
+
+    out_instance->bytecode_length = bytecode_count;
 
 	return NULL;
 }
@@ -292,6 +298,11 @@ gen_error_t* cio_vm_free(cio_vm_t* const restrict instance) {
 
         if(instance->bytecode[i].callables_indices) {
             error = gen_memory_free((void**) &instance->bytecode[i].callables_indices);
+            if(error) return error;
+        }
+
+        if(instance->bytecode[i].callables_names_lengths) {
+            error = gen_memory_free((void**) &instance->bytecode[i].callables_names_lengths);
             if(error) return error;
         }
     }

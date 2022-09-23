@@ -42,8 +42,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     if(error) return error;
 
     // TODO: `--bundle` - Emit a bundled executable for the provided list of bytecode files
+    // TODO: `--debundle` - Re-emit the modules composing an executable bundle
 
-    // TODO: `--disassemble` - Disassemble a bytecode file
     // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly. Can use same tokenizer.
 
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
@@ -328,10 +328,24 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         }
         case CIO_CLI_OPERATION_DISASSEMBLE: {
             if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
-            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No source file specified");
+
+            const char* bytecode_file = NULL;
+            size_t bytecode_file_length = 0;
+
+            if(!parsed.raw_argument_count) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to %t", CIO_CLI_BYTECODE_FILE_FALLBACK);
+                if(error) return error;
+
+                bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;
+                bytecode_file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
+            }
+            else {
+                bytecode_file = (argv + 1)[parsed.raw_argument_indices[0]];
+                bytecode_file_length = argument_lengths[parsed.raw_argument_indices[0]];
+            }
 
             gen_filesystem_handle_t bytecode_handle = {0};
-            error = gen_filesystem_handle_open(file, file_length, &bytecode_handle);
+            error = gen_filesystem_handle_open(bytecode_file, bytecode_file_length, &bytecode_handle);
             if(error) return error;
             size_t bytecode_length = 0;
             error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
@@ -346,11 +360,118 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             error = cio_vm_initialize(bytecode, bytecode_length, 1, &vm);
             if(error) return error;
 
-            for(size_t i = 0; i < vm.bytecode_length; ++i) {
-                for(size_t j = 0; j < vm.bytecode->callables_length; ++j) {
+            if(vm.bytecode_length != 1) return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+
+            cio_bytecode_t* bytecode_meta = &vm.bytecode[0];
+
+            char* cas_file = NULL;
+            size_t cas_file_size = 0;
+
+            for(size_t i = 0; i < bytecode_meta->callables_length; ++i) {
+                if(bytecode_meta->callables_offsets[i] == CIO_ROUTINE_EXTERNAL) {
+                    error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables_names_lengths[i] + 9, sizeof(char));
+                    if(error) return error;
                     
+                    error = gen_string_format(bytecode_meta->callables_names_lengths[i] + 9, &cas_file[cas_file_size], NULL, ":import %tz\n", sizeof(":import %tz\n") - 1, bytecode_meta->callables_names[i], bytecode_meta->callables_names_lengths[i]);
+                    if(error) return error;
+                    
+                    cas_file_size += bytecode_meta->callables_names_lengths[i] + 9;
                 }
             }
+
+            if(cas_file) {
+                error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + 1, sizeof(char));
+                if(error) return error;
+
+                cas_file[cas_file_size] = '\n';
+                
+                cas_file_size++;
+            }
+
+            for(size_t i = 0; i < bytecode_meta->size; ++i) {
+                for(size_t j = 0; j < bytecode_meta->callables_length; ++j) {
+                    if(i == bytecode_meta->callables_offsets[j]) {
+                        error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables_names_lengths[j] + 2, sizeof(char));
+                        if(error) return error;
+                        
+                        error = gen_string_format(bytecode_meta->callables_names_lengths[j] + 2, &cas_file[cas_file_size], NULL, "%tz:\n", sizeof("%tz:\n") - 1, bytecode_meta->callables_names[j], bytecode_meta->callables_names_lengths[j]);
+                        if(error) return error;
+                        
+                        cas_file_size += bytecode_meta->callables_names_lengths[j] + 2;
+                    }
+                }
+
+#ifdef __ANALYZER
+                cio_instruction_t instruction = {0};
+#else
+                cio_instruction_t instruction = *(const cio_instruction_t*) &bytecode_meta->bytecode[i];
+#endif
+
+                switch(instruction.opcode) {
+                    case CIO_PUSH: {
+                        size_t format_len = 0;
+                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
+                        if(error) return error;
+                        
+                        error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + format_len, sizeof(char));
+                        if(error) return error;
+
+                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
+                        if(error) return error;
+
+                        cas_file_size += format_len;
+                        break;
+                    }
+                    case CIO_CALL: {
+                        if(instruction.operand == CIO_OPERAND_MAX) {
+                            error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + 5, sizeof(char));
+                            if(error) return error;
+                            
+                            cas_file[cas_file_size] = '\t';
+                            cas_file[cas_file_size + 1] = 'r';
+                            cas_file[cas_file_size + 2] = 'e';
+                            cas_file[cas_file_size + 3] = 't';
+                            cas_file[cas_file_size + 4] = '\n';
+                            
+                            cas_file_size += 5;
+                            break;
+                        }
+
+                        size_t format_len = 0;
+                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables_names[instruction.operand]);
+                        if(error) return error;
+                        
+                        error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + format_len, sizeof(char));
+                        if(error) return error;
+
+                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables_names[instruction.operand]);
+                        if(error) return error;
+
+                        cas_file_size += format_len;
+                        break;
+                    }
+                }
+            }
+
+			bool exists = false;
+			error = gen_filesystem_path_exists(file, file_length, &exists);
+			if(error) return error;
+			if(!exists) {
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
+			}
+			else {
+				error = gen_filesystem_path_delete(file, file_length);
+				if(error) return error;
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
+			}
+
+            gen_filesystem_handle_t cas_handle = {0};
+            error = gen_filesystem_handle_open(file, file_length, &cas_handle);
+            if(error) return error;
+            error = gen_filesystem_handle_file_write(&cas_handle, (unsigned char*) cas_file, cas_file_size);
+            if(error) return error;
 
             break;
         }

@@ -12,6 +12,7 @@
   - Decompose header data structure into usable data
     - Extension data
   - Fuzzing
+  - Add VSC grammar for `.cas` files
   - Add all docs from Esolang wiki
     - Routine/Stack indices
     - Document default packaged library
