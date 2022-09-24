@@ -34,8 +34,6 @@ out/*
 tmp/*
 vulkan/*
 
-genstone/vendor/tmp/*
-
 filename
 test.c
 output.txt
@@ -46,4 +44,5 @@ output.txt
 *.DS_STORE
 
 *.ibc
+*.cbe
 a.cas

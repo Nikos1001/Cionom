@@ -21,12 +21,17 @@
 #define CIO_CLI_ASM_FILE_FALLBACK "a.cas"
 #endif
 
+#ifndef CIO_CLI_BUNDLE_FILE_FALLBACK
+#define CIO_CLI_BUNDLE_FILE_FALLBACK "a.cbe"
+#endif
+
 typedef enum {
     CIO_CLI_OPERATION_NONE,
     CIO_CLI_OPERATION_COMPILE,
     CIO_CLI_OPERATION_EXECUTE,
     CIO_CLI_OPERATION_MANGLE,
-    CIO_CLI_OPERATION_DISASSEMBLE
+    CIO_CLI_OPERATION_DISASSEMBLE,
+    CIO_CLI_OPERATION_BUNDLE
 } cio_cli_operation_t;
 
 typedef enum {
@@ -34,8 +39,12 @@ typedef enum {
     CIO_CLI_SWITCH_EXECUTE_BYTECODE,
     CIO_CLI_SWITCH_MANGLE_IDENTIFIER,
     CIO_CLI_SWITCH_STACK_LENGTH,
-    CIO_CLI_SWITCH_DISASSEMBLE
+    CIO_CLI_SWITCH_DISASSEMBLE,
+    CIO_CLI_SWITCH_BUNDLE
 } cio_cli_switch_t;
+
+// TODO: Separate out main
+// TODO: Pull out conglomerated filesystem procs into functions with locking
 
 static gen_error_t* gen_main(const size_t argc, const char* const restrict* const restrict argv) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
@@ -100,7 +109,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = "execute-bytecode",
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = "mangle-identifier",
         [CIO_CLI_SWITCH_STACK_LENGTH] = "stack-length",
-        [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble"
+        [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble",
+        [CIO_CLI_SWITCH_BUNDLE] = "bundle"
     };
 
     static const size_t switches_lengths[] = {
@@ -108,7 +118,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = sizeof("execute-bytecode") - 1,
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = sizeof("mangle-identifier") - 1,
         [CIO_CLI_SWITCH_STACK_LENGTH] = sizeof("stack-length") - 1,
-        [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1};
+        [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1,
+        [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1};
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -186,6 +197,26 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 }
 
                 operation = CIO_CLI_OPERATION_DISASSEMBLE;
+
+                break;
+            }
+
+            case CIO_CLI_SWITCH_BUNDLE: {
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                if(!parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_BUNDLE], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                    if(error) return error;
+
+                    file = CIO_CLI_BUNDLE_FILE_FALLBACK;
+                    file_length = sizeof(CIO_CLI_BUNDLE_FILE_FALLBACK) - 1;
+                }
+                else {
+                    file = parsed.long_argument_parameters[i];
+                    file_length = parsed.long_argument_parameter_lengths[i];
+                }
+
+                operation = CIO_CLI_OPERATION_BUNDLE;
 
                 break;
             }
@@ -470,6 +501,50 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             error = gen_filesystem_handle_open(file, file_length, &cas_handle);
             if(error) return error;
             error = gen_filesystem_handle_file_write(&cas_handle, (unsigned char*) cas_file, cas_file_size);
+            if(error) return error;
+
+            break;
+        }
+
+        case CIO_CLI_OPERATION_BUNDLE: {
+            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No files specified");
+
+            unsigned char* buffer = NULL;
+            size_t buffer_size = 0;
+
+            for(size_t i = 0; i < parsed.raw_argument_count; ++i) {
+                gen_filesystem_handle_t bytecode_handle = {0};
+                error = gen_filesystem_handle_open((argv + 1)[parsed.raw_argument_indices[i]], argument_lengths[parsed.raw_argument_indices[i]], &bytecode_handle);
+                if(error) return error;
+                size_t bytecode_length = 0;
+                error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
+                if(error) return error;
+                error = gen_memory_reallocate_zeroed((void**) &buffer, buffer_size, buffer_size + bytecode_length, sizeof(unsigned char));
+                if(error) return error;
+                error = gen_filesystem_handle_file_read(&bytecode_handle, 0, bytecode_length, &buffer[buffer_size]);
+                if(error) return error;
+
+                buffer_size += bytecode_length;
+            }
+
+			bool exists = false;
+			error = gen_filesystem_path_exists(file, file_length, &exists);
+			if(error) return error;
+			if(!exists) {
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
+			}
+			else {
+				error = gen_filesystem_path_delete(file, file_length);
+				if(error) return error;
+				error = gen_filesystem_path_create_file(file, file_length);
+				if(error) return error;
+			}
+
+            gen_filesystem_handle_t cbe_handle = {0};
+            error = gen_filesystem_handle_open(file, file_length, &cbe_handle);
+            if(error) return error;
+            error = gen_filesystem_handle_file_write(&cbe_handle, (unsigned char*) buffer, buffer_size);
             if(error) return error;
 
             break;

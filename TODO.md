@@ -25,3 +25,4 @@
     - Debug info
     - Disassembly
   - Document debug info format
+  - Document `--bundle` and `--disassemble`
