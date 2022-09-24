@@ -143,7 +143,7 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	return NULL;
 }
 
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance) {
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -169,7 +169,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, bytecode_count, bytecode_count + 1, sizeof(cio_bytecode_t));
         if(error) return error;
 
-        out_instance->bytecode[bytecode_count].callables_length = bytecode[0];
+        out_instance->bytecode[bytecode_count].callables_length = bytecode[i];
 
         if(out_instance->bytecode[bytecode_count].callables_length) {
             error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[bytecode_count].callables, out_instance->bytecode[bytecode_count].callables_length, sizeof(cio_routine_function_t));
@@ -213,42 +213,43 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         ++bytecode_count;
     }
 
-    // TODO: Get the inner loop cached on the first pass above
-    for(size_t i = 0; i < bytecode_count; ++i) {
-        for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
-            if(out_instance->bytecode[i].callables_offsets[j] == CIO_ROUTINE_EXTERNAL) {
-                for(size_t k = 0; k < bytecode_count; ++k) {
-                    for(size_t l = 0; l < out_instance->bytecode[k].callables_length; ++l) {
-                        if(out_instance->bytecode[k].callables_offsets[l] == CIO_ROUTINE_EXTERNAL) continue;
+    if(resolve_externals) {
+        // TODO: Get the inner loop cached on the first pass above
+        for(size_t i = 0; i < bytecode_count; ++i) {
+            for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
+                if(out_instance->bytecode[i].callables_offsets[j] == CIO_ROUTINE_EXTERNAL) {
+                    for(size_t k = 0; k < bytecode_count; ++k) {
+                        for(size_t l = 0; l < out_instance->bytecode[k].callables_length; ++l) {
+                            if(out_instance->bytecode[k].callables_offsets[l] == CIO_ROUTINE_EXTERNAL) continue;
 
-                        bool equal = false;
-                        error = gen_string_compare(out_instance->bytecode[i].callables_names[j], GEN_STRING_NO_BOUNDS, out_instance->bytecode[k].callables_names[l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
-                        if(error) return error;
+                            bool equal = false;
+                            error = gen_string_compare(out_instance->bytecode[i].callables_names[j], GEN_STRING_NO_BOUNDS, out_instance->bytecode[k].callables_names[l], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &equal);
+                            if(error) return error;
 
-                        if(equal) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables_names[j], k, out_instance->bytecode[k].callables_offsets[l], l);
-#endif
+                            if(equal) {
+    #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+                                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables_names[j], k, out_instance->bytecode[k].callables_offsets[l], l);
+    #endif
 
-                            out_instance->bytecode[i].callables_offsets[j] = out_instance->bytecode[k].callables_offsets[l];
-                            out_instance->bytecode[i].callables_bytecode_indices[j] = k;
-                            out_instance->bytecode[i].callables_indices[j] = l;
-                            goto break2;
+                                out_instance->bytecode[i].callables_offsets[j] = out_instance->bytecode[k].callables_offsets[l];
+                                out_instance->bytecode[i].callables_bytecode_indices[j] = k;
+                                out_instance->bytecode[i].callables_indices[j] = l;
+                                goto break2;
+                            }
                         }
                     }
+
+    #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+                    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables_names[j]);
+    #endif
+                    error = cio_resolve_external(out_instance->bytecode[i].callables_names[j], &out_instance->bytecode[i].callables[j], &out_instance->external_lib);
+                    if(error) return error;
+
+                    break2: continue;
                 }
-
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables_names[j]);
-#endif
-                error = cio_resolve_external(out_instance->bytecode[i].callables_names[j], &out_instance->bytecode[i].callables[j], &out_instance->external_lib);
-                if(error) return error;
-
-                break2: continue;
             }
         }
     }
-
     out_instance->bytecode_length = bytecode_count;
 
 	return NULL;

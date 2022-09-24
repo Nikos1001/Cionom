@@ -5,6 +5,7 @@
   - Set up code scanning
   - Set up CI
   - Pages for documentation
+  - Start doing semver releases (Fix up a *hecc* tonne of TODOs before doing this!)
 - Implementation
   - Write tests
   - Rewrite documentation
@@ -25,4 +26,5 @@
     - Debug info
     - Disassembly
   - Document debug info format
-  - Document `--bundle` and `--disassemble`
+  - Document `--bundle`, `--debundle` and `--disassemble`
+  - Document `.cas` on Esolang wiki and update other sections

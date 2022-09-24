@@ -31,7 +31,8 @@ typedef enum {
     CIO_CLI_OPERATION_EXECUTE,
     CIO_CLI_OPERATION_MANGLE,
     CIO_CLI_OPERATION_DISASSEMBLE,
-    CIO_CLI_OPERATION_BUNDLE
+    CIO_CLI_OPERATION_BUNDLE,
+    CIO_CLI_OPERATION_DEBUNDLE
 } cio_cli_operation_t;
 
 typedef enum {
@@ -40,7 +41,8 @@ typedef enum {
     CIO_CLI_SWITCH_MANGLE_IDENTIFIER,
     CIO_CLI_SWITCH_STACK_LENGTH,
     CIO_CLI_SWITCH_DISASSEMBLE,
-    CIO_CLI_SWITCH_BUNDLE
+    CIO_CLI_SWITCH_BUNDLE,
+    CIO_CLI_SWITCH_DEBUNDLE
 } cio_cli_switch_t;
 
 // TODO: Separate out main
@@ -49,9 +51,6 @@ typedef enum {
 static gen_error_t* gen_main(const size_t argc, const char* const restrict* const restrict argv) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
     if(error) return error;
-
-    // TODO: `--bundle` - Emit a bundled executable for the provided list of bytecode files
-    // TODO: `--debundle` - Re-emit the modules composing an executable bundle
 
     // TODO: `--assemble` - Assemble a bytecode file from bytecode assembly. Can use same tokenizer.
 
@@ -72,6 +71,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     //                                           emission (Maybe inline ASM would be better suited here)
     // TODO: `--extension=encode-default-routine` - Encodes the default entry point routine for the program in
     //                                              emitted bytecode
+    // TODO: `--extension=encode-stack-length` - Encodes the desired stack length for the program in emitted bytecode
     // TODO: `--extension=elide-parameter-count` - Allow the emission of parameter counts on routine declarations/definitions
     // TODO: `--extension=constants` - Allows the insertion of files' contents into the module header. Also enables the use of `__cionom_constant*` (Gets a pointer to the constant data at an index)
     // TODO: `--extension=nil-calls` - Enable the use of `__cionom_nil_call` (Full no-op call, leaves parameters on stack) and `__cionom_nil_call_frame` (Partial no-op call, removes parameters from stack) - must be declared (goes into header extension data)
@@ -110,7 +110,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = "mangle-identifier",
         [CIO_CLI_SWITCH_STACK_LENGTH] = "stack-length",
         [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble",
-        [CIO_CLI_SWITCH_BUNDLE] = "bundle"
+        [CIO_CLI_SWITCH_BUNDLE] = "bundle",
+        [CIO_CLI_SWITCH_DEBUNDLE] = "debundle"
     };
 
     static const size_t switches_lengths[] = {
@@ -119,7 +120,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = sizeof("mangle-identifier") - 1,
         [CIO_CLI_SWITCH_STACK_LENGTH] = sizeof("stack-length") - 1,
         [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1,
-        [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1};
+        [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1,
+        [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1};
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -217,6 +219,26 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 }
 
                 operation = CIO_CLI_OPERATION_BUNDLE;
+
+                break;
+            }
+
+            case CIO_CLI_SWITCH_DEBUNDLE: {
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                if(!parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_DEBUNDLE], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                    if(error) return error;
+
+                    file = CIO_CLI_BUNDLE_FILE_FALLBACK;
+                    file_length = sizeof(CIO_CLI_BUNDLE_FILE_FALLBACK) - 1;
+                }
+                else {
+                    file = parsed.long_argument_parameters[i];
+                    file_length = parsed.long_argument_parameter_lengths[i];
+                }
+
+                operation = CIO_CLI_OPERATION_DEBUNDLE;
 
                 break;
             }
@@ -331,7 +353,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize((unsigned char*) source, source_length, stack_length, &vm);
+			error = cio_vm_initialize((unsigned char*) source, source_length, stack_length, true, &vm);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
@@ -387,7 +409,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
             cio_vm_t vm = {0};
-            error = cio_vm_initialize(bytecode, bytecode_length, 1, &vm);
+            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm);
             if(error) return error;
 
             if(vm.bytecode_length != 1) return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
@@ -546,6 +568,78 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
             error = gen_filesystem_handle_file_write(&cbe_handle, (unsigned char*) buffer, buffer_size);
             if(error) return error;
+
+            break;
+        }
+        case CIO_CLI_OPERATION_DEBUNDLE: {
+            if(parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Debundling does not take files");
+
+            gen_filesystem_handle_t bytecode_handle = {0};
+            error = gen_filesystem_handle_open(file, file_length, &bytecode_handle);
+            if(error) return error;
+            size_t bytecode_length = 0;
+            error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
+            if(error) return error;
+            unsigned char* bytecode = NULL;
+            error = gen_memory_allocate_zeroed((void**) &bytecode, bytecode_length + 1, sizeof(unsigned char));
+            if(error) return error;
+            error = gen_filesystem_handle_file_read(&bytecode_handle, 0, bytecode_length, bytecode);
+            if(error) return error;
+
+            // // TODO: Use debug info for filenames
+
+            size_t bytecode_count = 0;
+
+            for(size_t i = 0; i < bytecode_length; ++i) {
+                size_t begin = i;
+                size_t callables_length = bytecode[i];
+
+                size_t offset = 1;
+                uint32_t last_routine = 0;
+                for(size_t j = 0; j < callables_length; ++j) {
+                    last_routine = *(uint32_t*) &bytecode[i + offset];
+                    offset += 4;
+
+                    size_t stride = 0;
+                    error = gen_string_length((const char*) &bytecode[i + offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+                    if(error) return error;
+
+                    offset += stride + 1;
+                }
+
+                for(i += offset + last_routine; bytecode[i] != 0xFF; ++i);
+
+                size_t module_length = 0;
+                error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &module_length, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
+                if(error) return error;
+                char* module = NULL;
+                error = gen_memory_allocate_zeroed((void**) &module, module_length + 1, sizeof(char));
+                if(error) return error;
+                error = gen_string_format(module_length, module, NULL, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
+                if(error) return error;
+
+                bool exists = false;
+                error = gen_filesystem_path_exists(module, module_length, &exists);
+                if(error) return error;
+                if(!exists) {
+                    error = gen_filesystem_path_create_file(module, module_length);
+                    if(error) return error;
+                }
+                else {
+                    error = gen_filesystem_path_delete(module, module_length);
+                    if(error) return error;
+                    error = gen_filesystem_path_create_file(module, module_length);
+                    if(error) return error;
+                }
+
+                gen_filesystem_handle_t cas_handle = {0};
+                error = gen_filesystem_handle_open(module, module_length, &cas_handle);
+                if(error) return error;
+                error = gen_filesystem_handle_file_write(&cas_handle, (unsigned char*) &bytecode[begin], (i - begin) + 1);
+                if(error) return error;
+
+                bytecode_count++;
+            }
 
             break;
         }

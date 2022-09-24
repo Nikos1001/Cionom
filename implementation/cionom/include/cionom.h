@@ -399,7 +399,7 @@ gen_error_t* cio_vm_bytecode_initialize(const unsigned char* const restrict byte
  * @param[out] out_instance a pointer to storage for the created VM.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance);
 
 /**
  * Destroys a VM.
