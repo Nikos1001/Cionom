@@ -59,7 +59,7 @@ The extensions currently supported by this are as follows (extensions which do n
 Name|Option|ID|Header Data|Code Data|Description
 ---|---|---|---|---|---
 Elide Reserve Space|`--extension=elide-reserve-space`|`0`|-|-|Allows the VM to be informed that reserve space has been elided with a call
-Encode Default Routine|`--extension=encode-default-routine`|`1`|The default routine index|-|Informs the VM of the default/entry point routine index for the bytecode module. In [bundled executables](#Executable-Bundles) this only applies to the first module in the bundle
+Encode Default Routine|`--extension=encode-default-routine`|`1`|The default routine identifier|-|Informs the VM of the default/entry point routine index for the bytecode module. In [bundled executables](#Executable-Bundles) this only applies to the first module in the bundle
 Constants|`--extension=constants`|`2`|The constant data|-|Allows the insertion of file contents into the module header. This may be listed multiple times to embed multiple files
 Nil Calls|`--extension=nil-calls`|`3`|The routine indices for `__cionom_extension_nil_call` and `__cionom_extension_nil_call_frame`|-|Allows the insertion of full/partial no-op calls
 Breakpoints|`--extension=breakpoints`|`4`|-|-|Allows halting of code execution to return to a debugger attached to a running program
@@ -84,7 +84,7 @@ push 0x7F
 The typical workflow for compiling and executing the Cíonom source file `examples/hello_world.cio` via. the reference implementation is as follows:
 ```
 cionom-cli --emit-bytecode=a.ibc examples/hello_world.cio
-cionom-cli --execute-bytecode=4 --stack-length=32 a.ibc
+cionom-cli --execute-bytecode=main --stack-length=32 a.ibc
 ```
 ```
 [cionom            ] [info    ] Hello, world!
@@ -97,9 +97,9 @@ cionom-cli --execute-bytecode=4 --stack-length=32 a.ibc
 *Action*
 Emits bytecode from compilation of `SOURCE` to the file `FILE`, or `a.ibc` if unspecified.
 
-#### `--execute-bytecode=ROUTINE BYTECODE`
+#### `--execute-bytecode[=ROUTINE] BYTECODE`
 *Action*
-Executes the routine index `ROUTINE` in the `BYTECODE`. Routines are ordered the same as they are in source and are zero-indexed.
+Executes the routine `ROUTINE` in the `BYTECODE` file - executes `__cionom_entrypoint` if `ROUTINE` is unspecified. `BYTECODE` can be a single bytecode module or a bundled executable.
 
 #### `--stack-length[=LENGTH]`
 *Setting*

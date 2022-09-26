@@ -13,6 +13,10 @@
 #define CIO_CLI_VERSION "unknown"
 #endif
 
+#ifndef CIO_CLI_ENTRY_ROUTINE_FALLBACK
+#define CIO_CLI_ENTRY_ROUTINE_FALLBACK "__cionom_entrypoint"
+#endif
+
 #ifndef CIO_CLI_STACK_LENGTH_FALLBACK
 #define CIO_CLI_STACK_LENGTH_FALLBACK 1024
 #endif
@@ -136,7 +140,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 	if(error) return error;
 
     size_t stack_length = SIZE_MAX;
-    size_t routine_index = 0;
+    const char* entry_routine = NULL;
     const char* file = NULL;
     size_t file_length = 0;
 
@@ -148,7 +152,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
                 if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_EMIT_BYTECODE], CIO_CLI_BYTECODE_FILE_FALLBACK);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BYTECODE_FILE_FALLBACK);
                     if(error) return error;
 
                     file = CIO_CLI_BYTECODE_FILE_FALLBACK;
@@ -165,19 +169,23 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
             
             case CIO_CLI_SWITCH_EXECUTE_BYTECODE: {
-                if(!parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
+                if(!parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_ENTRY_ROUTINE_FALLBACK);
+                    if(error) return error;
+                }
+
+                entry_routine = parsed.long_argument_parameters[i] ?: CIO_CLI_ENTRY_ROUTINE_FALLBACK;
+
                 operation = CIO_CLI_OPERATION_EXECUTE;
-                error = gen_string_number(parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &routine_index);
-                if(error) return error;
 
                 break;
             }
             case CIO_CLI_SWITCH_MANGLE_IDENTIFIER: {
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
-                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[CIO_CLI_SWITCH_MANGLE_IDENTIFIER]);
+                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
 
                 operation = CIO_CLI_OPERATION_MANGLE;
 
@@ -197,7 +205,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
                 if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_DISASSEMBLE], CIO_CLI_ASM_FILE_FALLBACK);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_ASM_FILE_FALLBACK);
                     if(error) return error;
 
                     file = CIO_CLI_ASM_FILE_FALLBACK;
@@ -217,7 +225,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
                 if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_BUNDLE], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK);
                     if(error) return error;
 
                     file = CIO_CLI_BUNDLE_FILE_FALLBACK;
@@ -237,7 +245,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
                 if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to %t", switches[CIO_CLI_SWITCH_DEBUNDLE], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK);
                     if(error) return error;
 
                     file = CIO_CLI_BUNDLE_FILE_FALLBACK;
@@ -256,7 +264,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             case CIO_CLI_SWITCH_VERSION: {
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
-                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[CIO_CLI_SWITCH_VERSION]);
+                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
 
                 operation = CIO_CLI_OPERATION_VERSION;
 
@@ -342,7 +350,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             size_t bytecode_file_length = 0;
 
             if(!parsed.raw_argument_count) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to %t", CIO_CLI_BYTECODE_FILE_FALLBACK);
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t`", CIO_CLI_BYTECODE_FILE_FALLBACK);
                 if(error) return error;
 
                 bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;
@@ -380,7 +388,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			if(error) return error;
 			error = cio_vm_push(&vm);
 			if(error) return error;
-			error = cio_vm_dispatch_call(&vm, routine_index, 0);
+
+            cio_callable_t* callable = NULL;
+            error = cio_vm_get_identifier(&vm, entry_routine, &callable);
+			if(error) return error;
+
+            vm.current_bytecode = callable->bytecode_index;
+			error = cio_vm_dispatch_call(&vm, callable->routine_index, 0);
 			if(error) return error;
 
             break;
@@ -405,7 +419,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             size_t bytecode_file_length = 0;
 
             if(!parsed.raw_argument_count) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to %t", CIO_CLI_BYTECODE_FILE_FALLBACK);
+                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t`", CIO_CLI_BYTECODE_FILE_FALLBACK);
                 if(error) return error;
 
                 bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;

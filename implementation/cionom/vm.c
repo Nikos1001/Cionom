@@ -169,6 +169,45 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	return NULL;
 }
 
+#include <genlog.h>
+
+gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable) {
+    GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_identifier, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!identifier) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`identifier` was `NULL`");
+	if(!out_callable) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_callable` was `NULL`");
+
+    size_t len = 0;
+    error = gen_string_length(identifier, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &len);
+    if(error) return error;
+
+    // TODO: Generate & reference linear list of routine
+    //       Definitions (callables) at VM init instead
+    //       Of maintaining per-bytecode.
+    //       Also allows module-agnostic calls by the native
+    //       Application.
+
+    for(size_t i = 0; i < vm->bytecode_length; ++i) {
+        for(size_t j = 0; j < vm->bytecode[i].callables_length; ++j) {
+            if(vm->bytecode[i].callables[j].offset == CIO_ROUTINE_EXTERNAL) continue;
+                bool equal = false;
+                if(vm->bytecode[i].callables[j].identifier_length == len) {
+                    error = gen_string_compare(identifier, GEN_STRING_NO_BOUNDS, vm->bytecode[i].callables[j].identifier, GEN_STRING_NO_BOUNDS, vm->bytecode[i].callables[j].identifier_length, &equal);
+                    if(error) return error;
+                }
+
+                if(equal) {
+                    *out_callable = &vm->bytecode[i].callables[j];
+                    return NULL;
+                }
+        }
+    }
+
+    return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Could not find identifier `%t`", identifier);
+}
+
 gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
@@ -239,42 +278,26 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     }
 
     if(resolve_externals) {
-        // TODO: Get the inner loop cached on the first pass above
         for(size_t i = 0; i < bytecode_count; ++i) {
             for(size_t j = 0; j < out_instance->bytecode[i].callables_length; ++j) {
                 if(out_instance->bytecode[i].callables[j].offset != CIO_ROUTINE_EXTERNAL) continue;
 
-                for(size_t k = 0; k < bytecode_count; ++k) {
-                    for(size_t l = 0; l < out_instance->bytecode[k].callables_length; ++l) {
-                        if(out_instance->bytecode[k].callables[l].offset == CIO_ROUTINE_EXTERNAL) continue;
-
-                        bool equal = false;
-                        if(out_instance->bytecode[k].callables[l].identifier_length == out_instance->bytecode[i].callables[j].identifier_length) {
-                            error = gen_string_compare(out_instance->bytecode[i].callables[j].identifier, out_instance->bytecode[i].callables[j].identifier_length, out_instance->bytecode[k].callables[l].identifier, out_instance->bytecode[k].callables[l].identifier_length, out_instance->bytecode[i].callables[j].identifier_length, &equal);
-                            if(error) return error;
-                        }
-
-                        if(equal) {
+                cio_callable_t* callable = NULL;
+                error = cio_vm_get_identifier(out_instance, out_instance->bytecode[i].callables[j].identifier, &callable);
+                if(error->type == GEN_ERROR_NO_SUCH_OBJECT) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables[j].identifier, k, out_instance->bytecode[k].callables[l].offset, l);
+                    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables[j].identifier);
 #endif
-
-                            out_instance->bytecode[i].callables[j].offset = out_instance->bytecode[k].callables[l].offset;
-                            out_instance->bytecode[i].callables[j].bytecode_index = k;
-                            out_instance->bytecode[i].callables[j].routine_index = l;
-
-                            goto break2;
-                        }
-                    }
+                    error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
+                    if(error) return error;
+    
+                    continue;
                 }
+                else if(error) return error;
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables[j].identifier);
-#endif
-                error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
-                if(error) return error;
-
-                break2: continue;
+                out_instance->bytecode[i].callables[j].offset = callable->offset;
+                out_instance->bytecode[i].callables[j].bytecode_index = callable->bytecode_index;
+                out_instance->bytecode[i].callables[j].routine_index = callable->routine_index;
             }
         }
     }

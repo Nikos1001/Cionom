@@ -5,7 +5,7 @@ foo 1
     printn 0
 :
 
-main 0
+__cionom_entrypoint 0
 :
     foo 108
 :

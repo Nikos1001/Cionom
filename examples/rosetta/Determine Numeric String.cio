@@ -6,7 +6,7 @@ alloc 1
 free* 1
 fpstring? 1
 
-main 0
+__cionom_entrypoint 0
 :
     alloc 11
     readc* 0 10

@@ -6,7 +6,7 @@ printn 1
 / 2
 % 2
 
-main 0
+__cionom_entrypoint 0
 :
     readn
     readn

@@ -387,17 +387,16 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
 
 /**
- * Creates and initializes a VM to execute a bytecode buffer.
- * @param[in] bytecode the bytecode buffer to execute.
- * @param[in] bytecode_length the length of the bytecode buffer to execute.
- * @param[in] stack_length the length of the stack to execute with.
- * @param[out] out_instance a pointer to storage for the created VM.
- * @return An error, otherwise `NULL`.
+ * Gets a callable from an identifier in a VM.
+ * @param vm the VM to get a callable from.
+ * @param identifier the identifier to look up.
+ * @param out_callable pointer to storage for a pointer to the retrieved callable.
+ * @return gen_error_t* 
  */
-gen_error_t* cio_vm_bytecode_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, cio_vm_t* const restrict out_instance);
+gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable);
 
 /**
- * Creates and initializes a VM to execute a set of concatonated bytecode buffers.
+ * Creates and initializes a VM to execute a bytecode module or bundled executable.
  * @param[in] bytecode the bytecode buffer to execute.
  * @param[in] bytecode_length the length of `bytecode`.
  * @param[in] stack_length the length of the stack to execute with.

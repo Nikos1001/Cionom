@@ -4,7 +4,7 @@ printn 1
 allocv 1
 free* 1
 
-main 0
+__cionom_entrypoint 0
 :
     copy= 0 3
 

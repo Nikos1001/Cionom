@@ -7,7 +7,7 @@ path? 1
 + 2
 printc* 1
 
-main 0
+__cionom_entrypoint 0
 :
     alloc 11
 

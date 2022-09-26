@@ -14,7 +14,7 @@ bar 0
     printn 0
 :
 
-main 0
+__cionom_entrypoint 0
 :
     copy= 0 0
     ? 4 3 0

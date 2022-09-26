@@ -13,7 +13,7 @@ lenc* 1
 + 2
 - 2
 
-main 0
+__cionom_entrypoint 0
 :
     alloc 12
     readc* 0 10

@@ -5,7 +5,7 @@ free* 1
 copy*[+]=c 3
 printc* 1
 
-main 0
+__cionom_entrypoint 0
 :
     alloc 11
 

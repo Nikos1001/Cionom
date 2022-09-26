@@ -62,7 +62,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 		++out_program->routines_length;
 		cio_routine_t* const routine = &out_program->routines[out_program->routines_length - 1];
 		routine->token = token;
-		error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &routine->identifier, NULL /* TODO: Identifier length */);
+		error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &routine->identifier, NULL);
 		if(error) return error;
 
         if(!(i + 1 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
