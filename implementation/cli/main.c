@@ -9,6 +9,10 @@
 #include <genfilesystem.h>
 #include <genlog.h>
 
+#ifndef CIO_CLI_VERSION
+#define CIO_CLI_VERSION "unknown"
+#endif
+
 #ifndef CIO_CLI_STACK_LENGTH_FALLBACK
 #define CIO_CLI_STACK_LENGTH_FALLBACK 1024
 #endif
@@ -32,7 +36,8 @@ typedef enum {
     CIO_CLI_OPERATION_MANGLE,
     CIO_CLI_OPERATION_DISASSEMBLE,
     CIO_CLI_OPERATION_BUNDLE,
-    CIO_CLI_OPERATION_DEBUNDLE
+    CIO_CLI_OPERATION_DEBUNDLE,
+    CIO_CLI_OPERATION_VERSION
 } cio_cli_operation_t;
 
 typedef enum {
@@ -42,7 +47,8 @@ typedef enum {
     CIO_CLI_SWITCH_STACK_LENGTH,
     CIO_CLI_SWITCH_DISASSEMBLE,
     CIO_CLI_SWITCH_BUNDLE,
-    CIO_CLI_SWITCH_DEBUNDLE
+    CIO_CLI_SWITCH_DEBUNDLE,
+    CIO_CLI_SWITCH_VERSION
 } cio_cli_switch_t;
 
 // TODO: Separate out main
@@ -111,7 +117,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_STACK_LENGTH] = "stack-length",
         [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble",
         [CIO_CLI_SWITCH_BUNDLE] = "bundle",
-        [CIO_CLI_SWITCH_DEBUNDLE] = "debundle"
+        [CIO_CLI_SWITCH_DEBUNDLE] = "debundle",
+        [CIO_CLI_SWITCH_VERSION] = "version"
     };
 
     static const size_t switches_lengths[] = {
@@ -121,7 +128,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_STACK_LENGTH] = sizeof("stack-length") - 1,
         [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1,
         [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1,
-        [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1};
+        [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1,
+        [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1};
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -168,6 +176,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
             case CIO_CLI_SWITCH_MANGLE_IDENTIFIER: {
                 if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[CIO_CLI_SWITCH_MANGLE_IDENTIFIER]);
 
                 operation = CIO_CLI_OPERATION_MANGLE;
 
@@ -239,6 +249,16 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 }
 
                 operation = CIO_CLI_OPERATION_DEBUNDLE;
+
+                break;
+            }
+
+            case CIO_CLI_SWITCH_VERSION: {
+                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+
+                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[CIO_CLI_SWITCH_VERSION]);
+
+                operation = CIO_CLI_OPERATION_VERSION;
 
                 break;
             }
@@ -572,8 +592,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             break;
         }
         case CIO_CLI_OPERATION_DEBUNDLE: {
-            if(parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Debundling does not take files");
-
             gen_filesystem_handle_t bytecode_handle = {0};
             error = gen_filesystem_handle_open(file, file_length, &bytecode_handle);
             if(error) return error;
@@ -640,6 +658,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 bytecode_count++;
             }
+
+            break;
+        }
+
+        case CIO_CLI_OPERATION_VERSION: {
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "Cíonom %t-%t", CIO_CLI_VERSION, GEN_BUILD_MODE == GEN_DEBUG ? "debug" : "release");
+            if(error) return error;
 
             break;
         }

@@ -28,3 +28,4 @@
   - Document debug info format
   - Document `--bundle`, `--debundle` and `--disassemble`
   - Document `.cas` on Esolang wiki and update other sections
+  - Do checks for CLI params with no effect/raw args to operations which ignore them

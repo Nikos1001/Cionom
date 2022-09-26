@@ -1,3 +1,5 @@
+GIT ?= git
+
 GENSTONE_DIR = implementation/Genstone
 CIONOM_DIR = .
 
