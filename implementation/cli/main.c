@@ -440,14 +440,14 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             size_t cas_file_size = 0;
 
             for(size_t i = 0; i < bytecode_meta->callables_length; ++i) {
-                if(bytecode_meta->callables_offsets[i] == CIO_ROUTINE_EXTERNAL) {
-                    error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables_names_lengths[i] + 9, sizeof(char));
+                if(bytecode_meta->callables[i].offset == CIO_ROUTINE_EXTERNAL) {
+                    error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[i].identifier_length + 9, sizeof(char));
                     if(error) return error;
                     
-                    error = gen_string_format(bytecode_meta->callables_names_lengths[i] + 9, &cas_file[cas_file_size], NULL, ":import %tz\n", sizeof(":import %tz\n") - 1, bytecode_meta->callables_names[i], bytecode_meta->callables_names_lengths[i]);
+                    error = gen_string_format(bytecode_meta->callables[i].identifier_length + 9, &cas_file[cas_file_size], NULL, ":import %tz\n", sizeof(":import %tz\n") - 1, bytecode_meta->callables[i].identifier, bytecode_meta->callables[i].identifier_length);
                     if(error) return error;
                     
-                    cas_file_size += bytecode_meta->callables_names_lengths[i] + 9;
+                    cas_file_size += bytecode_meta->callables[i].identifier_length + 9;
                 }
             }
 
@@ -462,14 +462,14 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             for(size_t i = 0; i < bytecode_meta->size; ++i) {
                 for(size_t j = 0; j < bytecode_meta->callables_length; ++j) {
-                    if(i == bytecode_meta->callables_offsets[j]) {
-                        error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables_names_lengths[j] + 2, sizeof(char));
+                    if(i == bytecode_meta->callables[j].offset) {
+                        error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[j].identifier_length + 2, sizeof(char));
                         if(error) return error;
                         
-                        error = gen_string_format(bytecode_meta->callables_names_lengths[j] + 2, &cas_file[cas_file_size], NULL, "%tz:\n", sizeof("%tz:\n") - 1, bytecode_meta->callables_names[j], bytecode_meta->callables_names_lengths[j]);
+                        error = gen_string_format(bytecode_meta->callables[j].identifier_length + 2, &cas_file[cas_file_size], NULL, "%tz:\n", sizeof("%tz:\n") - 1, bytecode_meta->callables[j].identifier, bytecode_meta->callables[j].identifier_length);
                         if(error) return error;
                         
-                        cas_file_size += bytecode_meta->callables_names_lengths[j] + 2;
+                        cas_file_size += bytecode_meta->callables[j].identifier_length + 2;
                     }
                 }
 
@@ -499,24 +499,21 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                             error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + 5, sizeof(char));
                             if(error) return error;
                             
-                            cas_file[cas_file_size] = '\t';
-                            cas_file[cas_file_size + 1] = 'r';
-                            cas_file[cas_file_size + 2] = 'e';
-                            cas_file[cas_file_size + 3] = 't';
-                            cas_file[cas_file_size + 4] = '\n';
+                            error = gen_string_copy(&cas_file[cas_file_size], 5, "\tret\n", sizeof("\tret\n"), 5);
+                            if(error) return error;
                             
                             cas_file_size += 5;
                             break;
                         }
 
                         size_t format_len = 0;
-                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables_names[instruction.operand]);
+                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
                         if(error) return error;
                         
                         error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + format_len, sizeof(char));
                         if(error) return error;
 
-                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables_names[instruction.operand]);
+                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
                         if(error) return error;
 
                         cas_file_size += format_len;

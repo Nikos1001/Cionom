@@ -145,6 +145,33 @@ typedef struct {
     size_t execution_offset;
 } cio_frame_t;
 
+typedef struct {
+    /**
+     * The identifier of this callable.
+     */
+    const char* identifier;
+    /**
+     * The length of the identifier of this callable.
+     */
+    size_t identifier_length;
+    /**
+     * The underlying function to call for this callable.
+     */
+    cio_routine_function_t function;
+    /**
+     * The index of the bytecode module this callable originates from.
+     */
+    size_t bytecode_index;
+    /**
+     * The offset into the bytecode buffer this callable begins at.
+     */
+    size_t offset;
+    /**
+     * The index of this callable.
+     */
+    size_t routine_index;
+} cio_callable_t;
+
 /**
  * A bytecode file consumed by the VM.
  */
@@ -158,36 +185,14 @@ typedef struct {
      */
     size_t size;
 
-    // TODO: Maybe pull out callable into its own struct
-
     /**
-     * The names of the callables.
+     * The callable routines for this module.
      */
-    const char** callables_names;
+    cio_callable_t* callables;
     /**
-     * The lengths of the names of the callables.
-     */
-    size_t* callables_names_lengths;
-    /**
-     * The number of callables.
+     * The number of callable routines for this module.
      */
     size_t callables_length;
-    /**
-     * The underlying function for the callables.
-     */
-    cio_routine_function_t* callables;
-    /**
-     * The bytecode buffer index for the callable.
-     */
-    size_t* callables_bytecode_indices;
-    /**
-     * The offsets of the callables.
-     */
-    size_t* callables_offsets;
-    /**
-     * The indices of the callables in their source.
-     */
-    size_t* callables_indices;
 } cio_bytecode_t;
 
 /**
