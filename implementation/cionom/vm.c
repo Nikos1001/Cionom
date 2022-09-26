@@ -14,8 +14,6 @@
 #include <genlog.h>
 #endif
 
-// TODO: Fix VM with nicer bytecode and header decomposition
-
 gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push_frame, GEN_FILE_NAME);
 	if(error) return error;
@@ -65,27 +63,39 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 
 
 	cio_frame_t* const frame = &vm->frames[vm->frames_used - 1];
-	unsigned char instruction = vm->bytecode[vm->current_bytecode].bytecode[frame->execution_offset];
+#ifdef __ANALYZER
+    cio_instruction_t* instruction = calloc(1, sizeof(cio_instruction_t));
+#else
+	const cio_instruction_t* instruction = (const cio_instruction_t*) &vm->bytecode[vm->current_bytecode].bytecode[frame->execution_offset];
+#endif
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Commencing execution in BC %uz @ %uz w/ frame %uz", vm->current_bytecode, frame->execution_offset, vm->frames_used - 1);
 #endif
 
 	size_t argc = 0;
-	while(instruction != 0b11111111) {
+	while(!(instruction->opcode == CIO_CALL && instruction->operand == CIO_OPERAND_MAX)) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
         gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc in BC %uz @ %uz", instruction, vm->current_bytecode, frame->execution_offset);
 #endif
-		if(instruction & 0b10000000) {
+		if(instruction->opcode == CIO_CALL) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %ui", instruction & 0b01111111);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %ui", instruction->operand);
 #endif
 
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
 			frame->height -= argc - 1;
-			error = cio_vm_dispatch_call(vm, instruction & 0b01111111, argc - 1);
+			error = cio_vm_dispatch_call(vm, instruction->operand, argc - 1);
+#ifdef __ANALYZER
+			if(error) {
+                free(instruction);
+                return error;
+            }
+#else
 			if(error) return error;
+#endif
+
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
             gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Call returned successfully");
 #endif
@@ -93,16 +103,32 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 		}
 		else {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %ui", instruction & 0b01111111);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %ui", instruction->operand);
 #endif
 
 			error = cio_vm_push(vm);
+#ifdef __ANALYZER
+			if(error) {
+                free(instruction);
+                return error;
+            }
+#else
 			if(error) return error;
-			vm->stack[frame->base + frame->height - 1] = instruction & 0b01111111;
+#endif
+			vm->stack[frame->base + frame->height - 1] = instruction->operand;
 			++argc;
 		}
-		instruction = vm->bytecode[vm->current_bytecode].bytecode[++frame->execution_offset];
+
+#ifdef __ANALYZER
+#else
+		instruction = (const cio_instruction_t*) &vm->bytecode[vm->current_bytecode].bytecode[++frame->execution_offset];
+#endif
 	}
+
+#ifdef __ANALYZER
+    free(instruction);
+#endif
+
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
 	gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "ret");
 #endif
@@ -128,7 +154,7 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
     vm->current_bytecode = vm->bytecode[vm->current_bytecode].callables[callable].bytecode_index;
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable] == cio_vm_internal_execute_routine ? "cionom" : "external", callable, (void*) vm->bytecode[vm->current_bytecode].callables[callable], vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
+    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable, (void*) vm->bytecode[vm->current_bytecode].callables[callable].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
 #endif
 
 	// Dispatch call
@@ -178,16 +204,29 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
         size_t offset = 1;
         for(size_t j = 0; j < out_instance->bytecode[bytecode_count].callables_length; ++j) {
-            uint32_t routine_offset = *(const uint32_t*) &bytecode[i + offset];
-            const char* identifier = (const char*) &bytecode[i + offset + sizeof(uint32_t)];
+#ifdef __ANALYZER
+            cio_routine_table_entry_t* entry = malloc(sizeof(cio_routine_table_entry_t));
+#else
+            const cio_routine_table_entry_t* entry = (const cio_routine_table_entry_t*) &bytecode[i + offset];
+#endif
 
             size_t stride = 0;
-            error = gen_string_length(identifier, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+            error = gen_string_length(entry->name, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
+#ifdef __ANALYZER
+            if(error) {
+                free(entry);
+                return error;
+            }
+#else
             if(error) return error;
+#endif
 
-            out_instance->bytecode[bytecode_count].callables[j] = (cio_callable_t) {identifier, stride, cio_vm_internal_execute_routine, bytecode_count, routine_offset, j};
+            out_instance->bytecode[bytecode_count].callables[j] = (cio_callable_t) {entry->name, stride, cio_vm_internal_execute_routine, bytecode_count, entry->offset, j};
 
-            offset += sizeof(uint32_t) + stride + 1;
+            offset += sizeof(entry->offset) + stride + 1;
+#ifdef __ANALYZER
+            free(entry);
+#endif
         }
 
         out_instance->bytecode[bytecode_count].bytecode = bytecode + offset;
@@ -217,7 +256,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
                         if(equal) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables_names[j], k, out_instance->bytecode[k].callables_offsets[l], l);
+                            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in BC %uz @ %uz (%uz)", out_instance->bytecode[i].callables[j].identifier, k, out_instance->bytecode[k].callables[l].offset, l);
 #endif
 
                             out_instance->bytecode[i].callables[j].offset = out_instance->bytecode[k].callables[l].offset;
@@ -230,7 +269,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 }
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables_names[j]);
+                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables[j].identifier);
 #endif
                 error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
                 if(error) return error;
