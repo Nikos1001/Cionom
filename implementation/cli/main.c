@@ -79,8 +79,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--extension=bytecode-intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
     //                                           and `__cionom_reserved_push0x7F` in code for direct control of bytecode
     //                                           emission (Maybe inline ASM would be better suited here)
-    // TODO: `--extension=encode-default-routine` - Encodes the default entry point routine for the program in
-    //                                              emitted bytecode
     // TODO: `--extension=encode-stack-length` - Encodes the desired stack length for the program in emitted bytecode
     // TODO: `--extension=elide-parameter-count` - Allow the emission of parameter counts on routine declarations/definitions
     // TODO: `--extension=constants` - Allows the insertion of files' contents into the module header. Also enables the use of `__cionom_constant*` (Gets a pointer to the constant data at an index)
