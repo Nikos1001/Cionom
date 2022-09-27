@@ -109,7 +109,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
             error = cio_column_from_offset(token->offset, &column, source, source_length);
             if(error) return error;
 
-            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
             if(error) return error;
 
             return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
@@ -137,7 +137,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
             error = cio_column_from_offset(token->offset, &column, source, source_length);
             if(error) return error;
 
-            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
             if(error) return error;
 
             return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
@@ -166,7 +166,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
                 error = cio_column_from_offset(token->offset, &column, source, source_length);
                 if(error) return error;
 
-                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
                 if(error) return error;
 
                 return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
@@ -190,7 +190,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
                     error = cio_column_from_offset(token->offset, &column, source, source_length);
                     if(error) return error;
 
-                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
                     if(error) return error;
 
                     return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);

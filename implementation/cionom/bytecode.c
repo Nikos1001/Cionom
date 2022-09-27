@@ -61,7 +61,7 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 	if(!source_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source_file` was `NULL`");
 
     if(program->routines_length >= CIO_ROUTINE_EXTERNAL) {
-        error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
+        error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
         if(error) return error;
 
         return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
@@ -176,7 +176,7 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
                     error = cio_column_from_offset(call->token->offset, &column, source, source_length);
                     if(error) return error;
 
-                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Call to undeclared or undefined routine `%t` in %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Call to undeclared or undefined routine `%t` in %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
                     if(error) return error;
 
                     return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Call to undeclared or undefined routine `%t` in %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
@@ -219,7 +219,7 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
         //       we can just continue codegen past this point creating
         //       unaddressable routines.
 		if(code_size >= CIO_ROUTINE_EXTERNAL) {
-            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
             if(error) return error;
 
             return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);

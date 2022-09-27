@@ -53,7 +53,8 @@ typedef enum {
     CIO_CLI_SWITCH_BUNDLE,
     CIO_CLI_SWITCH_DEBUNDLE,
     CIO_CLI_SWITCH_VERSION,
-    CIO_CLI_SWITCH_FATAL_WARNINGS
+    CIO_CLI_SWITCH_FATAL_WARNINGS,
+    CIO_CLI_SWITCH_WARNING
 } cio_cli_switch_t;
 
 static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, size_t* out_size) {
@@ -138,37 +139,26 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--no-extension-encoding` - Treat the reserved encoding `push 0x7F` as a no-op instead of using it as an extension marker and remove all pushed entries preceeding it
     // TODO: `--no-extension-marker` - Ignore extensions in the bytecode header
 
-    // TODO: `--extension=elide-reserve-space` - Allow calls to be prefixed with `::` to prevent the creation of reserve space
-    // TODO: `--extension=bytecode-intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
+    // TODO: `--extension=elide_reserve-space` - Allow calls to be prefixed with `::` to prevent the creation of reserve space
+    // TODO: `--extension=bytecode_intrinsics` - Enable the use of `__cionom_push`, `__cionom_call`, `__cionom_return`
     //                                           and `__cionom_reserved_push0x7F` in code for direct control of bytecode
     //                                           emission (Maybe inline ASM would be better suited here)
-    // TODO: `--extension=encode-stack-length` - Encodes the desired stack length for the program in emitted bytecode
-    // TODO: `--extension=elide-parameter-count` - Allow the emission of parameter counts on routine declarations/definitions
+    // TODO: `--extension=encode_stack_length` - Encodes the desired stack length for the program in emitted bytecode
+    // TODO: `--extension=elide_parameter_count` - Allow the emission of parameter counts on routine declarations/definitions
     // TODO: `--extension=constants` - Allows the insertion of files' contents into the module header. Also enables the use of `__cionom_constant*` (Gets a pointer to the constant data at an index)
-    // TODO: `--extension=nil-calls` - Enable the use of `__cionom_nil_call` (Full no-op call, leaves parameters on stack) and `__cionom_nil_call_frame` (Partial no-op call, removes parameters from stack) - must be declared (goes into header extension data)
+    // TODO: `--extension=nil_calls` - Enable the use of `__cionom_nil_call` (Full no-op call, leaves parameters on stack) and `__cionom_nil_call_frame` (Partial no-op call, removes parameters from stack) - must be declared (goes into header extension data)
     // TODO: `--extension=preprocessor` - Enables a preprocessing step whereby files can be included and text patterns can be replaced (`|include` and `|macro`). Also allow the use of `||` to ignore the remainder of a line
     // TODO: `--extension=breakpoints` - Enables the use of breakpoints to call back to a debugger attached to a running program
-    // TODO: `--extension=debug-info` - Allows the insertion of extra information about the program into the header to aid in debugging
+    // TODO: `--extension=debug_info` - Allows the insertion of extra information about the program into the header to aid in debugging
 
-    // TODO: `--warning=entrypoint-parameter` - Warn for entrypoints which have non-zero parameter counts
-    // TODO: `--warning=routine-duplicated` - Warn for routines which are defined multiple times in an executable bundle
-    // TODO: `--warning=routine-shadows-native` - Warn for routines which shadow a definition in native code
-    // TODO: `--warning=routine-declared-defined` - Warn for routines which are both declared and defined in the same file
-    // TODO: `--warning=header-extension` - Warn for bytecode which contains extensions in its header
-    // TODO: `--warning=bytecode-extension` - Warn for bytecode which contains extensions during execution
-    // TODO: `--warning=unmarked-extension` -  Warn for bytecode which makes use of extensions not denoted in the header
-    // TODO: `--warning=duplicate-extension` - Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect
-
-    // TODO: Map the following switches to the warning settings struct
-    //       --fatal-warnings
-    //       --warning=implicit-switch-parameter
-    //       --warning=implicit-switch
-    //       --warning=implicit-file
-    //       --warning=emit-reserved-encoding
-    //       --warning=reserved-identifier
-    //       --warning=parameter-overflow
-    //       --warning=parameter-count-mismatch
-    //       --warning=consume-reserved-encoding
+    // TODO: `--warning=entrypoint_parameter` - Warn for entrypoints which have non-zero parameter counts
+    // TODO: `--warning=routine_duplicated` - Warn for routines which are defined multiple times in an executable bundle
+    // TODO: `--warning=routine_shadows_native` - Warn for routines which shadow a definition in native code
+    // TODO: `--warning=routine_declared_defined` - Warn for routines which are both declared and defined in the same file
+    // TODO: `--warning=header_extension` - Warn for bytecode which contains extensions in its header
+    // TODO: `--warning=bytecode_extension` - Warn for bytecode which contains extensions during execution
+    // TODO: `--warning=unmarked_extension` -  Warn for bytecode which makes use of extensions not denoted in the header
+    // TODO: `--warning=duplicate_extension` - Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect
 
     if(!(argc - 1)) {
         error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No parameters specified");
@@ -195,7 +185,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_BUNDLE] = "bundle",
         [CIO_CLI_SWITCH_DEBUNDLE] = "debundle",
         [CIO_CLI_SWITCH_VERSION] = "version",
-        [CIO_CLI_SWITCH_FATAL_WARNINGS] = "fatal-warnings"
+        [CIO_CLI_SWITCH_FATAL_WARNINGS] = "fatal-warnings",
+        [CIO_CLI_SWITCH_WARNING] = "warning"
     };
 
     static const size_t switches_lengths[] = {
@@ -207,7 +198,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1,
         [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1,
         [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1,
-        [CIO_CLI_SWITCH_FATAL_WARNINGS] = sizeof("fatal-warnings") - 1};
+        [CIO_CLI_SWITCH_FATAL_WARNINGS] = sizeof("fatal-warnings") - 1,
+        [CIO_CLI_SWITCH_WARNING] = sizeof("warning") - 1};
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -217,13 +209,10 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     const char* entry_routine = NULL;
     const char* file = NULL;
 
-    bool warn_implicit_switch = true;
-    bool warn_implicit_switch_parameter = true;
-    bool warn_implicit_file = true;
+    bool warn_implicit_switch = false;
+    bool warn_implicit_switch_parameter = false;
+    bool warn_implicit_file = false;
     cio_warning_settings_t warning_settings = {0};
-    error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), true);
-    if(error) return error;
-    warning_settings.fatal_warnings = false;
 
     cio_cli_operation_t operation = CIO_CLI_OPERATION_NONE;
 
@@ -244,6 +233,60 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             warning_settings.fatal_warnings = true;
+        }
+        else if(parsed.long_argument_indices[i] == CIO_CLI_SWITCH_WARNING) {
+            if(!parsed.long_argument_parameters[i]) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+                if(error) return error;
+
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+            }
+
+            // TODO: Fix parameter duplication here
+            // TODO: Document these
+
+            bool all = false;
+            error = gen_string_compare("all", sizeof("all"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &all);
+            if(error) return error;
+            if(all) {
+                bool fatal_warnings = warning_settings.fatal_warnings;
+
+                error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), true);
+                if(error) return error;
+                warn_implicit_switch_parameter = true;
+                warn_implicit_switch = true;
+                warn_implicit_file = true;
+                
+                warning_settings.fatal_warnings = fatal_warnings;
+
+                continue;
+            }
+
+            error = gen_string_compare("implicit_switch_parameter", sizeof("implicit_switch_parameter"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_switch_parameter);
+            if(error) return error;
+            if(warn_implicit_switch_parameter) continue;
+            error = gen_string_compare("implicit_switch", sizeof("implicit_switch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_switch);
+            if(error) return error;
+            if(warn_implicit_switch) continue;
+            error = gen_string_compare("implicit_file", sizeof("implicit_file"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_file);
+            if(error) return error;
+            if(warn_implicit_file) continue;
+
+            error = gen_string_compare("emit_reserved_encoding", sizeof("emit_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.emit_reserved_encoding);
+            if(error) return error;
+            if(warning_settings.emit_reserved_encoding) continue;
+            error = gen_string_compare("reserved_identifier", sizeof("reserved_identifier"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.reserved_identifier);
+            if(error) return error;
+            if(warning_settings.reserved_identifier) continue;
+            error = gen_string_compare("parameter_overflow", sizeof("parameter_overflow"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.parameter_overflow);
+            if(error) return error;
+            if(warning_settings.parameter_overflow) continue;
+            error = gen_string_compare("parameter_count_mismatch", sizeof("parameter_count_mismatch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.parameter_count_mismatch);
+            if(error) return error;
+            if(warning_settings.parameter_count_mismatch) continue;
+            error = gen_string_compare("consume_reserved_encoding", sizeof("consume_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.consume_reserved_encoding);
+            if(error) return error;
+            if(warning_settings.consume_reserved_encoding) continue;
         }
     }
 
@@ -429,6 +472,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             case CIO_CLI_SWITCH_FATAL_WARNINGS: break; // Already handled above
+            case CIO_CLI_SWITCH_WARNING: break; // Already handled above
 
             default: return gen_error_attach_backtrace(GEN_ERROR_UNKNOWN, GEN_LINE_NUMBER, "Something went wrong while parsing arguments");
         }
@@ -496,11 +540,11 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             const char* bytecode_file = NULL;
 
             if(!parsed.raw_argument_count && warn_implicit_file) {
-                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "Bytecode file not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
-                
+
                 if(warning_settings.fatal_warnings) {
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Bytecode file not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 }
             }
 
