@@ -29,3 +29,7 @@
   - Document `--bundle`, `--debundle` and `--disassemble`
   - Update Esolang wiki
   - Do checks for CLI params with no effect/raw args to operations which ignore them
+  - Do parameter checking on `warning_settings` and document it as a parameter
+  - Review buffer bounding negligence (e.g. ignoring `source_file_length`)
+  - "try-catch" esque. mechanism for catching Genstone errors in Cíonom
+    - Update the catch divide-by-zero example

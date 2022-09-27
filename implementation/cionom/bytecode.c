@@ -50,7 +50,7 @@ static void cio_module_internal_emit_cleanup_bytecode(unsigned char** bytecode) 
 
 // TODO: `cio_routine_table_entry_t` and `cio_instruction_t` as output types (split) for `cio_module_emit`.
 
-gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
+gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_module_emit, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -60,7 +60,12 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
 	if(!source_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source_file` was `NULL`");
 
-	if(program->routines_length > CIO_OPERAND_MAX) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Number of routines exceeds maximum allowed by bytecode format");
+    if(program->routines_length >= CIO_ROUTINE_EXTERNAL) {
+        error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
+        if(error) return error;
+
+        return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
+    }
 
 	GEN_CLEANUP_FUNCTION(cio_module_internal_emit_cleanup_offsets) uint32_t* offsets = NULL;
 	if(program->routines_length) {
@@ -95,7 +100,46 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
                     code[code_size] = (cio_instruction_t) {0, CIO_PUSH}; // Reserve space
 
                     for(size_t k = 0; k < call->parameters_length; ++k) {
-                        if(call->parameters[k] >= UINT8_MAX) return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Value `%uz` exceeds maximum allowed by bytecode format", call->parameters[k]);
+                        if(call->parameters[k] == CIO_OPERAND_MAX && warning_settings->emit_reserved_encoding) {
+                            // TODO: Diagnostics like this can definitely be reconsolidated
+                            //       into a more centralized interface.
+                            //       Use to implement "show line of error" with an indicator.
+                            //       Have a sink of some sort to allow the lib-user to
+                            //       retrieve diagnostics.
+                            size_t line = 0;
+                            size_t column = 0;
+
+                            error = cio_line_from_offset(call->token->offset, &line, source, source_length);
+                            if(error) return error;
+
+                            error = cio_column_from_offset(call->token->offset, &column, source, source_length);
+                            if(error) return error;
+
+                            error = gen_log_formatted(warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Emission for call `%tz` resulted in reserved encoding `push %uc` in %t:%uz:%uz [%temit_reserved_encoding]", &source[call->token->offset], call->token->length, CIO_OPERAND_MAX, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                            if(error) return error;
+
+                            if(warning_settings->fatal_warnings) {
+                                return gen_error_attach_backtrace_formatted(GEN_ERROR_IN_USE, GEN_LINE_NUMBER, "Emission for call `%tz` resulted in reserved encoding `push %uc` in %t:%uz:%uz [%temit_reserved_encoding]", &source[call->token->offset], call->token->length, CIO_OPERAND_MAX, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                            }
+                        }
+
+                        if(call->parameters[k] > CIO_OPERAND_MAX && warning_settings->parameter_overflow) {
+                            size_t line = 0;
+                            size_t column = 0;
+
+                            error = cio_line_from_offset(call->token->offset, &line, source, source_length);
+                            if(error) return error;
+
+                            error = cio_column_from_offset(call->token->offset, &column, source, source_length);
+                            if(error) return error;
+
+                            error = gen_log_formatted(warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Emission for call `%tz` resulted in a value greater than the maximum encodable value `%uc` in %t:%uz:%uz [%tparameter_overflow]", &source[call->token->offset], call->token->length, CIO_OPERAND_MAX, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                            if(error) return error;
+
+                            if(warning_settings->fatal_warnings) {
+                                return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emission for call `%tz` resulted in a value greater than the maximum encodable value `%uc` in %t:%uz:%uz [%tparameter_overflow]", &source[call->token->offset], call->token->length, CIO_OPERAND_MAX, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                            }
+                        }
 
                         // Emit push for each param
                         code[code_size + k + 1] = (cio_instruction_t) {(uint8_t) call->parameters[k], CIO_PUSH};
@@ -132,7 +176,28 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
                     error = cio_column_from_offset(call->token->offset, &column, source, source_length);
                     if(error) return error;
 
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Call to undeclared or undefined routine `%t` at %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Call to undeclared or undefined routine `%t` in %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Call to undeclared or undefined routine `%t` in %tz:%uz:%uz", call->identifier, source_file, source_file_length, line, column);
+                }
+
+                if(call->parameters_length != program->routines[called].parameters && warning_settings->parameter_count_mismatch) {
+                    size_t line = 0;
+                    size_t column = 0;
+
+                    error = cio_line_from_offset(call->token->offset, &line, source, source_length);
+                    if(error) return error;
+
+                    error = cio_column_from_offset(call->token->offset, &column, source, source_length);
+                    if(error) return error;
+
+                    error = gen_log_formatted(warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Call `%tz` to routine `%t` with %uz parameters did not match routine parameter count %uz in %t:%uz:%uz [%tparameter_count_mismatch]", &source[call->token->offset], call->token->length, call->identifier, call->parameters_length, program->routines[called].parameters, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+
+                    if(warning_settings->fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Call `%tz` to routine `%t` with %uz parameters did not match routine parameter count %uz in %t:%uz:%uz [%tparameter_count_mismatch]", &source[call->token->offset], call->token->length, call->identifier, call->parameters_length, program->routines[called].parameters, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
 
 				// Emit call
@@ -147,7 +212,18 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 			code[code_size++] = (cio_instruction_t) {CIO_OPERAND_MAX, CIO_RET};
 		}
 
-		if(code_size >= CIO_ROUTINE_EXTERNAL) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emitted code size exceeds maximum allowed by bytecode format");
+        // TODO: Technically this is the limit for the *start* of a routine
+        //       and the contents of a really long routine can extend beyond
+        //       the external routine limit.
+        //       This also might make more sense as a warning by default as
+        //       we can just continue codegen past this point creating
+        //       unaddressable routines.
+		if(code_size >= CIO_ROUTINE_EXTERNAL) {
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
+            if(error) return error;
+
+            return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
+        }
 	}
 
 	size_t header_size = sizeof(cio_header_t);

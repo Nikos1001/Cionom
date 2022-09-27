@@ -1,0 +1,8 @@
+__cionom_foo 0 ::
+__cionom_bar 2 ::
+
+__cionom_entrypoint 0
+:
+    __cionom_foo 127
+    __cionom_bar 128
+:

@@ -13,6 +13,54 @@
 #include <gencommon.h>
 #include <gendynamiclibrary.h>
 
+typedef struct {
+    /**
+     * Treat warnings as fatal errors.
+     */
+    bool fatal_warnings;
+
+    /**
+     * Warn for calls which result in the reserved encoding `push 0x7F`.
+     */
+    bool emit_reserved_encoding;
+    /**
+     * Warn for declaring routines which contain `__cionom` in their identifier.
+     */
+    bool reserved_identifier;
+    /**
+     * Warn for calls which provide a literal greater than the maximum encodable value `0x7E`.
+     */
+    bool parameter_overflow;
+    /**
+     * Warn for bytecode which contains extensions in its header.
+     */
+    bool header_extension;
+    /**
+     * Warn for bytecode which contains extensions during execution.
+     */
+    bool bytecode_extension;
+    /**
+     * Warn for calls which provide more parameters than the declaration/definition specifies.
+     */
+    bool parameter_count_mismatch;
+    /**
+     * Warn for bytecode which makes use of extensions not denoted in the header.
+     */
+    bool unmarked_extension;
+    /**
+     * Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect.
+     */
+    bool duplicate_extension;
+    /**
+     * Warn for consumption of the reserved encoding `push 0x7F`.
+     */
+    bool consume_reserved_encoding;
+    /**
+     * Warn for routines which are both declared and defined in the same file.
+     */
+    bool routine_declared_defined;
+} cio_warning_settings_t;
+
 /**
  * The type of a source token.
  */
@@ -238,6 +286,8 @@ typedef struct cio_vm_t {
      * The library handle from which to load externally resolved routines.
      */
     gen_dynamic_library_handle_t external_lib;
+
+    const cio_warning_settings_t* warning_settings;
 } cio_vm_t;
 
 /**
@@ -362,7 +412,7 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
 /**
  * Properly cleans up and frees the contents of a program representation.
  * Does not free the program representation container itself as allocation is done by the user.
@@ -382,7 +432,7 @@ gen_error_t* cio_program_free(cio_program_t* const restrict program);
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length);
+gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
 
 gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
 
@@ -403,7 +453,7 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
  * @param[out] out_instance a pointer to storage for the created VM.
  * @return An error, otherwise `NULL`.
  */
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance);
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, const cio_warning_settings_t* const restrict warning_settings);
 
 /**
  * Destroys a VM.

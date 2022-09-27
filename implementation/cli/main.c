@@ -52,8 +52,72 @@ typedef enum {
     CIO_CLI_SWITCH_DISASSEMBLE,
     CIO_CLI_SWITCH_BUNDLE,
     CIO_CLI_SWITCH_DEBUNDLE,
-    CIO_CLI_SWITCH_VERSION
+    CIO_CLI_SWITCH_VERSION,
+    CIO_CLI_SWITCH_FATAL_WARNINGS
 } cio_cli_switch_t;
+
+static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, size_t* out_size) {
+    GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_cli_read_file, GEN_FILE_NAME);
+    if(error) return error;
+
+    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `NULL`");
+    if(!out_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_file` was `NULL`");
+    if(!out_size) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_size` was `NULL`");
+    
+    gen_filesystem_handle_t handle = {0};
+    error = gen_filesystem_handle_open(path, GEN_STRING_NO_BOUNDS, &handle);
+    if(error) return error;
+    
+    error = gen_filesystem_handle_file_size(&handle, out_size);
+    if(error) return error;
+
+    error = gen_memory_allocate_zeroed((void**) out_file, *out_size, sizeof(unsigned char));
+    if(error) return error;
+
+    error = gen_filesystem_handle_file_read(&handle, 0, *out_size, *out_file);
+    if(error) return error;
+
+    error = gen_filesystem_handle_close(&handle);
+    if(error) return error;
+
+    return NULL;
+}
+
+static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned char* buffer, size_t size) {
+    GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_cli_read_file, GEN_FILE_NAME);
+    if(error) return error;
+
+    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `NULL`");
+    if(!buffer) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`buffer` was `NULL`");
+    
+    bool exists = false;
+    error = gen_filesystem_path_exists(path, GEN_STRING_NO_BOUNDS, &exists);
+    if(error) return error;
+
+    if(!exists) {
+        error = gen_filesystem_path_create_file(path, GEN_STRING_NO_BOUNDS);
+        if(error) return error;
+    }
+    else {
+        error = gen_filesystem_path_delete(path, GEN_STRING_NO_BOUNDS);
+        if(error) return error;
+
+        error = gen_filesystem_path_create_file(path, GEN_STRING_NO_BOUNDS);
+        if(error) return error;
+    }
+
+    gen_filesystem_handle_t handle = {0};
+    error = gen_filesystem_handle_open(path, GEN_STRING_NO_BOUNDS, &handle);
+    if(error) return error;
+
+    error = gen_filesystem_handle_file_write(&handle, buffer, size);
+    if(error) return error;
+
+    error = gen_filesystem_handle_close(&handle);
+    if(error) return error;
+
+    return NULL;
+}
 
 // TODO: Separate out main
 // TODO: Pull out conglomerated filesystem procs into functions with locking
@@ -67,7 +131,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
     // TODO: `--help` - Print help menu
-    // TODO: `--version` - Print version information
     // TODO: `--verbose` - Verbose output
 
     // TODO: `--mapfile` - Redirect exported routine names to be different to their internal names based on a file. Also contains list of files for constant data under `--extension=constants`
@@ -87,21 +150,32 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     // TODO: `--extension=breakpoints` - Enables the use of breakpoints to call back to a debugger attached to a running program
     // TODO: `--extension=debug-info` - Allows the insertion of extra information about the program into the header to aid in debugging
 
-    // TODO: `--fatal-warnings` - Treat warnings as fatal errors
-    // TODO: `--warning=implicit-switch` - Warn for implicit switches such as stack length or file name
-    // TODO: `--warning=erroneous-switch` - Warn for switches passed in scenarios where they take no effect
-    // TODO: `--warning=emit-reserved-encoding` - Warn for calls which result in the reserved encoding `push 0x7F`
-    // TODO: `--warning=reserved-identifier` - Warn for declaring routines which contain `__cionom` in their identifier
-    // TODO: `--warning=parameter-overflow` - Warn for calls which provide a literal greater than the maximum encodable value `0x7F`
+    // TODO: `--warning=entrypoint-parameter` - Warn for entrypoints which have non-zero parameter counts
+    // TODO: `--warning=routine-duplicated` - Warn for routines which are defined multiple times in an executable bundle
+    // TODO: `--warning=routine-shadows-native` - Warn for routines which shadow a definition in native code
+    // TODO: `--warning=routine-declared-defined` - Warn for routines which are both declared and defined in the same file
     // TODO: `--warning=header-extension` - Warn for bytecode which contains extensions in its header
     // TODO: `--warning=bytecode-extension` - Warn for bytecode which contains extensions during execution
-    // TODO: `--warning=parameter-count-mismatch` - Warn for calls which provide more parameters than the declaration/definition specifies
     // TODO: `--warning=unmarked-extension` -  Warn for bytecode which makes use of extensions not denoted in the header
     // TODO: `--warning=duplicate-extension` - Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect
-    // TODO: `--warning=consume-reserved-encoding` - Warn for consumption of the reserved encoding `push 0x7F`
-    // TODO: `--warning=routine-declared-defined` - Warn for routines which are both declared and defined in the same file
 
-    if(!(argc - 1)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "No parameters specified");
+    // TODO: Map the following switches to the warning settings struct
+    //       --fatal-warnings
+    //       --warning=implicit-switch-parameter
+    //       --warning=implicit-switch
+    //       --warning=implicit-file
+    //       --warning=emit-reserved-encoding
+    //       --warning=reserved-identifier
+    //       --warning=parameter-overflow
+    //       --warning=parameter-count-mismatch
+    //       --warning=consume-reserved-encoding
+
+    if(!(argc - 1)) {
+        error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No parameters specified");
+        if(error) return error;
+
+        return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No parameters specified");
+    }
 
     size_t* argument_lengths = NULL;
     error = gen_memory_allocate_zeroed((void**) &argument_lengths, argc - 1, sizeof(size_t));
@@ -120,7 +194,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble",
         [CIO_CLI_SWITCH_BUNDLE] = "bundle",
         [CIO_CLI_SWITCH_DEBUNDLE] = "debundle",
-        [CIO_CLI_SWITCH_VERSION] = "version"
+        [CIO_CLI_SWITCH_VERSION] = "version",
+        [CIO_CLI_SWITCH_FATAL_WARNINGS] = "fatal-warnings"
     };
 
     static const size_t switches_lengths[] = {
@@ -131,7 +206,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1,
         [CIO_CLI_SWITCH_BUNDLE] = sizeof("bundle") - 1,
         [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1,
-        [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1};
+        [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1,
+        [CIO_CLI_SWITCH_FATAL_WARNINGS] = sizeof("fatal-warnings") - 1};
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -140,26 +216,57 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     size_t stack_length = SIZE_MAX;
     const char* entry_routine = NULL;
     const char* file = NULL;
-    size_t file_length = 0;
+
+    bool warn_implicit_switch = true;
+    bool warn_implicit_switch_parameter = true;
+    bool warn_implicit_file = true;
+    cio_warning_settings_t warning_settings = {0};
+    error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), true);
+    if(error) return error;
+    warning_settings.fatal_warnings = false;
 
     cio_cli_operation_t operation = CIO_CLI_OPERATION_NONE;
 
     for(size_t i = 0; i < parsed.long_argument_count; ++i) {
+        // We need to parse this out first to enable diagnostics in other switches
+        if(parsed.long_argument_indices[i] == CIO_CLI_SWITCH_FATAL_WARNINGS) {
+            if(parsed.long_argument_parameters[i]) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                if(error) return error;
+
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+            }
+            if(warning_settings.fatal_warnings) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+                if(error) return error;
+
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+            }
+
+            warning_settings.fatal_warnings = true;
+        }
+    }
+
+    for(size_t i = 0; i < parsed.long_argument_count; ++i) {
         switch(parsed.long_argument_indices[i]) {
             case CIO_CLI_SWITCH_EMIT_BYTECODE: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
-
-                if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BYTECODE_FILE_FALLBACK);
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
 
-                    file = CIO_CLI_BYTECODE_FILE_FALLBACK;
-                    file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
                 }
-                else {
-                    file = parsed.long_argument_parameters[i];
-                    file_length = parsed.long_argument_parameter_lengths[i];
+
+                if(!parsed.long_argument_parameters[i] && warn_implicit_switch_parameter) {
+                    error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+
+                    if(warning_settings.fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
+
+                file = parsed.long_argument_parameters[i] ?: CIO_CLI_BYTECODE_FILE_FALLBACK;
 
                 operation = CIO_CLI_OPERATION_COMPILE;
 
@@ -167,11 +274,20 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
             
             case CIO_CLI_SWITCH_EXECUTE_BYTECODE: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
-
-                if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_ENTRY_ROUTINE_FALLBACK);
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
+
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
+                }
+
+                if(!parsed.long_argument_parameters[i] && warn_implicit_switch_parameter) {
+                    error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_ENTRY_ROUTINE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+
+                    if(warning_settings.fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_ENTRY_ROUTINE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
 
                 entry_routine = parsed.long_argument_parameters[i] ?: CIO_CLI_ENTRY_ROUTINE_FALLBACK;
@@ -180,18 +296,40 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 break;
             }
-            case CIO_CLI_SWITCH_MANGLE_IDENTIFIER: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
 
-                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+            case CIO_CLI_SWITCH_MANGLE_IDENTIFIER: {
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
+                }
+
+                if(parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                }
 
                 operation = CIO_CLI_OPERATION_MANGLE;
 
                 break;
             }
+
             case CIO_CLI_SWITCH_STACK_LENGTH: {
-                if(!parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
-                if(stack_length != SIZE_MAX) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+                if(!parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
+                }
+                if(stack_length != SIZE_MAX) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
+                }
 
                 error = gen_string_number(parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &stack_length);
                 if(error) return error;
@@ -200,19 +338,22 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             case CIO_CLI_SWITCH_DISASSEMBLE: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
-
-                if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_ASM_FILE_FALLBACK);
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
 
-                    file = CIO_CLI_ASM_FILE_FALLBACK;
-                    file_length = sizeof(CIO_CLI_ASM_FILE_FALLBACK) - 1;
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
                 }
-                else {
-                    file = parsed.long_argument_parameters[i];
-                    file_length = parsed.long_argument_parameter_lengths[i];
+
+                if(!parsed.long_argument_parameters[i] && warn_implicit_switch_parameter) {
+                    error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_ASM_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+
+                    if(warning_settings.fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_ASM_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
+                file = parsed.long_argument_parameters[i] ?: CIO_CLI_ASM_FILE_FALLBACK;
 
                 operation = CIO_CLI_OPERATION_DISASSEMBLE;
 
@@ -220,19 +361,23 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             case CIO_CLI_SWITCH_BUNDLE: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
-
-                if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
 
-                    file = CIO_CLI_BUNDLE_FILE_FALLBACK;
-                    file_length = sizeof(CIO_CLI_BUNDLE_FILE_FALLBACK) - 1;
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
                 }
-                else {
-                    file = parsed.long_argument_parameters[i];
-                    file_length = parsed.long_argument_parameter_lengths[i];
+
+                if(!parsed.long_argument_parameters[i] && warn_implicit_switch_parameter) {
+                    error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+                    
+                    if(warning_settings.fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
+
+                file = parsed.long_argument_parameters[i] ?: CIO_CLI_BUNDLE_FILE_FALLBACK;
 
                 operation = CIO_CLI_OPERATION_BUNDLE;
 
@@ -240,19 +385,23 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             case CIO_CLI_SWITCH_DEBUNDLE: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
-
-                if(!parsed.long_argument_parameters[i]) {
-                    error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t`", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK);
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
 
-                    file = CIO_CLI_BUNDLE_FILE_FALLBACK;
-                    file_length = sizeof(CIO_CLI_BUNDLE_FILE_FALLBACK) - 1;
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
                 }
-                else {
-                    file = parsed.long_argument_parameters[i];
-                    file_length = parsed.long_argument_parameter_lengths[i];
+
+                if(!parsed.long_argument_parameters[i] && warn_implicit_switch_parameter) {
+                    error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+                    
+                    if(warning_settings.fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` parameter not specified, defaulting to `%t` [%twarn_implicit_switch_parameter]", switches[parsed.long_argument_indices[i]], CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    }
                 }
+
+                file = parsed.long_argument_parameters[i] ?: CIO_CLI_BUNDLE_FILE_FALLBACK;
 
                 operation = CIO_CLI_OPERATION_DEBUNDLE;
 
@@ -260,46 +409,61 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             case CIO_CLI_SWITCH_VERSION: {
-                if(operation) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Multiple operations specified");
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
+                    if(error) return error;
 
-                if(parsed.long_argument_parameters[i]) return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
+                }
+
+                if(parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                }
 
                 operation = CIO_CLI_OPERATION_VERSION;
 
                 break;
             }
 
+            case CIO_CLI_SWITCH_FATAL_WARNINGS: break; // Already handled above
+
             default: return gen_error_attach_backtrace(GEN_ERROR_UNKNOWN, GEN_LINE_NUMBER, "Something went wrong while parsing arguments");
         }
     }
 
     switch(operation) {
-        case CIO_CLI_OPERATION_NONE: return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "No operation specified");
+        case CIO_CLI_OPERATION_NONE: {
+            error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No operation specified");
+            if(error) return error;
+
+            return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No operation specified");
+        }
         case CIO_CLI_OPERATION_COMPILE: {
-            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
-            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No source file specified");
+            if(parsed.raw_argument_count > 1) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple files specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
+            }
+            if(!parsed.raw_argument_count) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No source file specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No source file specified");
+            }
 
             const char* source_file = (argv + 1)[parsed.raw_argument_indices[0]];
-
-            if(stack_length != SIZE_MAX) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` specified to `--%t`", switches[CIO_CLI_SWITCH_STACK_LENGTH], switches[CIO_CLI_SWITCH_EMIT_BYTECODE]);
-                if(error) return error;
-            }
 
             size_t filename_length = 0;
             error = gen_string_length(source_file, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &filename_length);
             if(error) return error;
 
-            gen_filesystem_handle_t source_handle = {0};
-            error = gen_filesystem_handle_open(source_file, argument_lengths[parsed.raw_argument_indices[0]], &source_handle);
-            if(error) return error;
             size_t source_length = 0;
-            error = gen_filesystem_handle_file_size(&source_handle, &source_length);
-            if(error) return error;
             char* source = NULL;
-            error = gen_memory_allocate_zeroed((void**) &source, source_length + 1, sizeof(char));
-            if(error) return error;
-            error = gen_filesystem_handle_file_read(&source_handle, 0, source_length, (unsigned char*) source);
+            error = cio_cli_read_file(source_file, (unsigned char**) &source, &source_length);
             if(error) return error;
 
 			cio_token_t* tokens = NULL;
@@ -308,78 +472,58 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			if(error) return error;
 
 			cio_program_t program = {0};
-			error = cio_parse(tokens, tokens_length, &program, source, source_length, source_file, filename_length);
+			error = cio_parse(tokens, tokens_length, &program, source, source_length, source_file, filename_length, &warning_settings);
 			if(error) return error;
 
 			unsigned char* bytecode = NULL;
 			size_t bytecode_length = 0;
-			error = cio_module_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length);
+			error = cio_module_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length, &warning_settings);
 			if(error) return error;
 
-			gen_filesystem_handle_t bytecode_file = {0};
-			bool exists = false;
-			error = gen_filesystem_path_exists(file, file_length, &exists);
+            error = cio_cli_recreate_write_file(file, bytecode, bytecode_length);
 			if(error) return error;
-			if(!exists) {
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-			else {
-				error = gen_filesystem_path_delete(file, file_length);
-				if(error) return error;
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-			if(bytecode) {
-				error = gen_filesystem_handle_open(file, file_length, &bytecode_file);
-				if(error) return error;
-				error = gen_filesystem_handle_file_write(&bytecode_file, bytecode, bytecode_length);
-				if(error) return error;
-				error = gen_filesystem_handle_close(&bytecode_file);
-				if(error) return error;
-            }
 
             break;
         }
         case CIO_CLI_OPERATION_EXECUTE: {
-            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
+            if(parsed.raw_argument_count > 1) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple files specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
+            }
 
             const char* bytecode_file = NULL;
-            size_t bytecode_file_length = 0;
 
-            if(!parsed.raw_argument_count) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t`", CIO_CLI_BYTECODE_FILE_FALLBACK);
+            if(!parsed.raw_argument_count && warn_implicit_file) {
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                if(error) return error;
+                
+                if(warning_settings.fatal_warnings) {
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                }
+            }
+
+            bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BYTECODE_FILE_FALLBACK;
+
+            if(stack_length == SIZE_MAX && warn_implicit_switch) {
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
 
-                bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;
-                bytecode_file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
-            }
-            else {
-                bytecode_file = (argv + 1)[parsed.raw_argument_indices[0]];
-                bytecode_file_length = argument_lengths[parsed.raw_argument_indices[0]];
-            }
+                if(warning_settings.fatal_warnings) {
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                }
 
-            if(stack_length == SIZE_MAX) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK);
-                if(error) return error;
-
-                stack_length = CIO_CLI_STACK_LENGTH_FALLBACK;
             }
+            stack_length = stack_length != SIZE_MAX ? stack_length : CIO_CLI_STACK_LENGTH_FALLBACK;
 
-            gen_filesystem_handle_t source_handle = {0};
-            error = gen_filesystem_handle_open(bytecode_file, bytecode_file_length, &source_handle);
-            if(error) return error;
-            size_t source_length = 0;
-            error = gen_filesystem_handle_file_size(&source_handle, &source_length);
-            if(error) return error;
-            char* source = NULL;
-            error = gen_memory_allocate_zeroed((void**) &source, source_length + 1, sizeof(char));
-            if(error) return error;
-            error = gen_filesystem_handle_file_read(&source_handle, 0, source_length, (unsigned char*) source);
+            size_t bytecode_length = 0;
+            unsigned char* bytecode = NULL;
+            error = cio_cli_read_file(bytecode_file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize((unsigned char*) source, source_length, stack_length, true, &vm);
+			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, &warning_settings);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
@@ -398,8 +542,18 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             break;
         }
         case CIO_CLI_OPERATION_MANGLE: {
-            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No identifer specified");
-            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple identifers specified");
+            if(!parsed.raw_argument_count) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No identifier specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No identifier specified");
+            }
+            if(parsed.raw_argument_count > 1) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple identifiers specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple identifiers specified");
+            }
 
             char* mangled = NULL;
             error = cio_mangle_identifier((argv + 1)[parsed.raw_argument_indices[0]], &mangled);
@@ -411,40 +565,41 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             break;
         }
         case CIO_CLI_OPERATION_DISASSEMBLE: {
-            if(parsed.raw_argument_count > 1) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
-
-            const char* bytecode_file = NULL;
-            size_t bytecode_file_length = 0;
-
-            if(!parsed.raw_argument_count) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t`", CIO_CLI_BYTECODE_FILE_FALLBACK);
+            if(parsed.raw_argument_count > 1) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple files specified");
                 if(error) return error;
 
-                bytecode_file = CIO_CLI_BYTECODE_FILE_FALLBACK;
-                bytecode_file_length = sizeof(CIO_CLI_BYTECODE_FILE_FALLBACK) - 1;
-            }
-            else {
-                bytecode_file = (argv + 1)[parsed.raw_argument_indices[0]];
-                bytecode_file_length = argument_lengths[parsed.raw_argument_indices[0]];
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
             }
 
-            gen_filesystem_handle_t bytecode_handle = {0};
-            error = gen_filesystem_handle_open(bytecode_file, bytecode_file_length, &bytecode_handle);
-            if(error) return error;
+            const char* bytecode_file = NULL;
+
+            if(!parsed.raw_argument_count && warn_implicit_file) {
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                if(error) return error;
+                
+                if(warning_settings.fatal_warnings) {
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                }
+            }
+
+            bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BYTECODE_FILE_FALLBACK;
+
             size_t bytecode_length = 0;
-            error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
-            if(error) return error;
             unsigned char* bytecode = NULL;
-            error = gen_memory_allocate_zeroed((void**) &bytecode, bytecode_length + 1, sizeof(unsigned char));
-            if(error) return error;
-            error = gen_filesystem_handle_file_read(&bytecode_handle, 0, bytecode_length, bytecode);
+            error = cio_cli_read_file(bytecode_file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
             cio_vm_t vm = {0};
-            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm);
+            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm, &warning_settings);
             if(error) return error;
 
-            if(vm.bytecode_length != 1) return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+            if(vm.bytecode_length != 1) {
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+                if(error) return error;
+
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+            }
 
             cio_bytecode_t* bytecode_meta = &vm.bytecode[0];
 
@@ -534,86 +689,44 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 }
             }
 
-			bool exists = false;
-			error = gen_filesystem_path_exists(file, file_length, &exists);
+            error = cio_cli_recreate_write_file(file, (unsigned char*) cas_file, cas_file_size);
 			if(error) return error;
-			if(!exists) {
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-			else {
-				error = gen_filesystem_path_delete(file, file_length);
-				if(error) return error;
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-
-            gen_filesystem_handle_t cas_handle = {0};
-            error = gen_filesystem_handle_open(file, file_length, &cas_handle);
-            if(error) return error;
-            error = gen_filesystem_handle_file_write(&cas_handle, (unsigned char*) cas_file, cas_file_size);
-            if(error) return error;
 
             break;
         }
 
         case CIO_CLI_OPERATION_BUNDLE: {
-            if(!parsed.raw_argument_count) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No files specified");
+            if(!parsed.raw_argument_count) {
+                error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No bytecode files specified");
+                if(error) return error;
+
+                return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No bytecode files specified");
+            }
 
             unsigned char* buffer = NULL;
             size_t buffer_size = 0;
 
             for(size_t i = 0; i < parsed.raw_argument_count; ++i) {
-                gen_filesystem_handle_t bytecode_handle = {0};
-                error = gen_filesystem_handle_open((argv + 1)[parsed.raw_argument_indices[i]], argument_lengths[parsed.raw_argument_indices[i]], &bytecode_handle);
-                if(error) return error;
                 size_t bytecode_length = 0;
-                error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
-                if(error) return error;
-                error = gen_memory_reallocate_zeroed((void**) &buffer, buffer_size, buffer_size + bytecode_length, sizeof(unsigned char));
-                if(error) return error;
-                error = gen_filesystem_handle_file_read(&bytecode_handle, 0, bytecode_length, &buffer[buffer_size]);
+                unsigned char* bytecode = NULL;
+                error = cio_cli_read_file((argv + 1)[parsed.raw_argument_indices[i]], (unsigned char**) &bytecode, &bytecode_length);
                 if(error) return error;
 
                 buffer_size += bytecode_length;
             }
 
-			bool exists = false;
-			error = gen_filesystem_path_exists(file, file_length, &exists);
+            error = cio_cli_recreate_write_file(file, buffer, buffer_size);
 			if(error) return error;
-			if(!exists) {
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-			else {
-				error = gen_filesystem_path_delete(file, file_length);
-				if(error) return error;
-				error = gen_filesystem_path_create_file(file, file_length);
-				if(error) return error;
-			}
-
-            gen_filesystem_handle_t cbe_handle = {0};
-            error = gen_filesystem_handle_open(file, file_length, &cbe_handle);
-            if(error) return error;
-            error = gen_filesystem_handle_file_write(&cbe_handle, (unsigned char*) buffer, buffer_size);
-            if(error) return error;
 
             break;
         }
         case CIO_CLI_OPERATION_DEBUNDLE: {
-            gen_filesystem_handle_t bytecode_handle = {0};
-            error = gen_filesystem_handle_open(file, file_length, &bytecode_handle);
-            if(error) return error;
             size_t bytecode_length = 0;
-            error = gen_filesystem_handle_file_size(&bytecode_handle, &bytecode_length);
-            if(error) return error;
             unsigned char* bytecode = NULL;
-            error = gen_memory_allocate_zeroed((void**) &bytecode, bytecode_length + 1, sizeof(unsigned char));
-            if(error) return error;
-            error = gen_filesystem_handle_file_read(&bytecode_handle, 0, bytecode_length, bytecode);
+            error = cio_cli_read_file(file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
-            // // TODO: Use debug info for filenames
+            // TODO: Use debug info for filenames
 
             size_t bytecode_count = 0;
 
@@ -645,26 +758,9 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 error = gen_string_format(module_length, module, NULL, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
                 if(error) return error;
 
-                bool exists = false;
-                error = gen_filesystem_path_exists(module, module_length, &exists);
-                if(error) return error;
-                if(!exists) {
-                    error = gen_filesystem_path_create_file(module, module_length);
-                    if(error) return error;
-                }
-                else {
-                    error = gen_filesystem_path_delete(module, module_length);
-                    if(error) return error;
-                    error = gen_filesystem_path_create_file(module, module_length);
-                    if(error) return error;
-                }
-
-                gen_filesystem_handle_t cas_handle = {0};
-                error = gen_filesystem_handle_open(module, module_length, &cas_handle);
-                if(error) return error;
-                error = gen_filesystem_handle_file_write(&cas_handle, (unsigned char*) &bytecode[begin], (i - begin) + 1);
-                if(error) return error;
-
+                error = cio_cli_recreate_write_file(module, &bytecode[begin], (i - begin) + 1);
+	    		if(error) return error;
+        
                 bytecode_count++;
             }
 
@@ -691,7 +787,9 @@ int main(const int argc, const char* const* const argv) {
 
     error = gen_main((size_t) argc, argv);
     if(error) {
+#if GEN_BUILD_MODE == GEN_DEBUG
         gen_error_print("cionom-cli", error, GEN_ERROR_SEVERITY_FATAL);
+#endif
         gen_error_abort();
     }
 }

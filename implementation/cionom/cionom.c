@@ -144,6 +144,7 @@ gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char**
 			}
 		}
 
+        // TODO: Warning for this and just append as-is.
 		if(!mangled_grapheme_value) return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Invalid character encountered while mangling symbol `%t`: '%c'", identifier, identifier[i]);
 
 		size_t mangled_grapheme_length = 0;

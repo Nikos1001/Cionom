@@ -5,13 +5,10 @@
 
 #include <genmemory.h>
 #include <genstring.h>
+#include <genlog.h>
 
 #ifndef CIO_VM_DEBUG_PRINTS
 #define CIO_VM_DEBUG_PRINTS GEN_DISABLED
-#endif
-
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-#include <genlog.h>
 #endif
 
 gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
@@ -105,6 +102,17 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
 			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %ui", instruction->operand);
 #endif
+
+            if(instruction->operand == CIO_OPERAND_MAX && vm->warning_settings->consume_reserved_encoding) {
+                // TODO: Add source info/disassembly here once debugging "stuff" is implemented
+
+                error = gen_log_formatted(vm->warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Encoding `call 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                if(error) return error;
+
+                if(vm->warning_settings->fatal_warnings) {
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_IN_USE, GEN_LINE_NUMBER, "Encoding `call 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                }
+            }
 
 			error = cio_vm_push(vm);
 #ifdef __ANALYZER
@@ -208,13 +216,15 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
     return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Could not find identifier `%t`", identifier);
 }
 
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance) {
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, const cio_warning_settings_t* const restrict warning_settings) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!bytecode) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode` was `NULL`");
 	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was 0");
 	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
+
+    out_instance->warning_settings = warning_settings;
 
     // TODO: Find a way to reduce the massive number of allocations and duplications happening in vm init
 

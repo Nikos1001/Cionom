@@ -7,7 +7,7 @@
 #include <genmemory.h>
 #include <genlog.h>
 
-static gen_error_t* cio_parse_internal_expect(const cio_token_t* const restrict token, const cio_token_type_t expected, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
+static gen_error_t* cio_parse_internal_expect(const cio_token_t* const restrict token, const cio_token_type_t expected, const char* const restrict source, const size_t source_length, const char* const restrict source_file, GEN_UNUSED const size_t source_file_length) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_parse_internal_expect, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -18,13 +18,17 @@ static gen_error_t* cio_parse_internal_expect(const cio_token_t* const restrict 
 	if(token->type != expected) {
 		size_t line = 0;
 		size_t column = 0;
+
 		error = cio_line_from_offset(token->offset, &line, source, source_length);
 		if(error) return error;
+
 		error = cio_column_from_offset(token->offset, &column, source, source_length);
 		if(error) return error;
-		error = gen_log_formatted(GEN_LOG_LEVEL_ERROR, "cionom", "Malformed program: Unexpected token %tz:%uz:%uz", source_file, source_file_length, line, column);
+
+		error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Unexpected token `%tz` in %t:%uz:%uz", &source[token->offset], token->length, source_file, line, column);
 		if(error) return error;
-		return gen_error_attach_backtrace(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Parsing failed");
+
+        return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected token `%tz` in %t:%uz:%uz", &source[token->offset], token->length, source_file, line, column);
 	}
 
 	return NULL;
@@ -40,7 +44,7 @@ static void cio_parse_internal_cleanup_program(cio_program_t** program) {
     }
 }
 
-gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length) {
+gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_parse, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -65,7 +69,52 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 		error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &routine->identifier, NULL);
 		if(error) return error;
 
-        if(!(i + 1 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
+        if(warning_settings->reserved_identifier) {
+            bool entry_point = false;
+            error = gen_string_compare(routine->identifier, GEN_STRING_NO_BOUNDS, "__cionom_entrypoint", sizeof("__cionom_entrypoint"), GEN_STRING_NO_BOUNDS, &entry_point);
+    		if(error) return error;
+
+            if(!entry_point) {
+                bool contains = false;
+                error = gen_string_contains(routine->identifier, GEN_STRING_NO_BOUNDS, "__cionom", sizeof("__cionom"), GEN_STRING_NO_BOUNDS, &contains);
+                if(error) return error;
+
+                if(contains) {
+                    size_t line = 0;
+                    size_t column = 0;
+
+                    error = cio_line_from_offset(routine->token->offset, &line, source, source_length);
+                    if(error) return error;
+
+                    error = cio_column_from_offset(routine->token->offset, &column, source, source_length);
+                    if(error) return error;
+
+                    error = gen_log_formatted(warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Routine identifier `%t` contained reserved sequence `__cionom` in %t:%uz:%uz [%treserved_identifier]", routine->identifier, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                    if(error) return error;
+
+                    if(warning_settings->fatal_warnings) {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_IN_USE, GEN_LINE_NUMBER, "Routine identifier `%t` contained reserved sequence `__cionom` in %t:%uz:%uz [%treserved_identifier]", routine->identifier, source_file, line, column, warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                    }
+                }
+            }
+        }
+
+        if(!(i + 1 < tokens_length)) {
+            size_t line = 0;
+            size_t column = 0;
+
+            error = cio_line_from_offset(token->offset, &line, source, source_length);
+            if(error) return error;
+
+            error = cio_column_from_offset(token->offset, &column, source, source_length);
+            if(error) return error;
+
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+            if(error) return error;
+
+            return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+        }
+        
         token = &tokens[++i];
 
 		error = cio_parse_internal_expect(token, CIO_TOKEN_NUMBER, source, source_length, source_file, source_file_length);
@@ -78,7 +127,21 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 			continue;
 		}
 
-        if(!(i + 2 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
+        if(!(i + 2 < tokens_length)) {
+            size_t line = 0;
+            size_t column = 0;
+
+            error = cio_line_from_offset(token->offset, &line, source, source_length);
+            if(error) return error;
+
+            error = cio_column_from_offset(token->offset, &column, source, source_length);
+            if(error) return error;
+
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+            if(error) return error;
+
+            return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+        }
         i += 2;
         token = &tokens[i];
 
@@ -93,7 +156,21 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 			error = gen_string_duplicate(source + token->offset, source_length - token->offset, token->length, &call->identifier, NULL);
 			if(error) return error;
 
-            if(!(i + 1 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
+            if(!(i + 1 < tokens_length)) {
+                size_t line = 0;
+                size_t column = 0;
+
+                error = cio_line_from_offset(token->offset, &line, source, source_length);
+                if(error) return error;
+
+                error = cio_column_from_offset(token->offset, &column, source, source_length);
+                if(error) return error;
+
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+                if(error) return error;
+
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+            }
             token = &tokens[++i];
 
 			while(token->type == CIO_TOKEN_NUMBER) {
@@ -103,7 +180,21 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 				error = gen_string_number(source + token->offset, source_length - token->offset, token->length, &call->parameters[call->parameters_length - 1]);
 				if(error) return error;
 
-                if(!(i + 1 < tokens_length)) return gen_error_attach_backtrace(GEN_ERROR_TOO_SHORT, GEN_LINE_NUMBER, "Unexpected EOF");
+                if(!(i + 1 < tokens_length)) {
+                    size_t line = 0;
+                    size_t column = 0;
+
+                    error = cio_line_from_offset(token->offset, &line, source, source_length);
+                    if(error) return error;
+
+                    error = cio_column_from_offset(token->offset, &column, source, source_length);
+                    if(error) return error;
+
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
+                }
                 token = &tokens[++i];
 			}
 		}
