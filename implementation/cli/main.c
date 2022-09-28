@@ -258,7 +258,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             }
 
             // TODO: Fix parameter duplication here
-            // TODO: Document these
             // TODO: Move this out into a more managable structure
 
             bool all = false;
