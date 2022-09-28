@@ -34,3 +34,4 @@
   - Review buffer bounding negligence (e.g. ignoring `source_file_length`)
   - "try-catch" esque. mechanism for catching Genstone errors in Cíonom
     - Update the catch divide-by-zero example
+  - Remove all exposed headers
