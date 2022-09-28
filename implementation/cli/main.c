@@ -41,12 +41,13 @@ typedef enum {
     CIO_CLI_OPERATION_DISASSEMBLE,
     CIO_CLI_OPERATION_BUNDLE,
     CIO_CLI_OPERATION_DEBUNDLE,
-    CIO_CLI_OPERATION_VERSION
+    CIO_CLI_OPERATION_VERSION,
+    CIO_CLI_OPERATION_HELP
 } cio_cli_operation_t;
 
 typedef enum {
     CIO_CLI_SWITCH_EMIT_BYTECODE,
-    CIO_CLI_SWITCH_EXECUTE_BYTECODE,
+    CIO_CLI_SWITCH_EXECUTE_BUNDLE,
     CIO_CLI_SWITCH_MANGLE_IDENTIFIER,
     CIO_CLI_SWITCH_STACK_LENGTH,
     CIO_CLI_SWITCH_DISASSEMBLE,
@@ -54,7 +55,8 @@ typedef enum {
     CIO_CLI_SWITCH_DEBUNDLE,
     CIO_CLI_SWITCH_VERSION,
     CIO_CLI_SWITCH_FATAL_WARNINGS,
-    CIO_CLI_SWITCH_WARNING
+    CIO_CLI_SWITCH_WARNING,
+    CIO_CLI_SWITCH_HELP
 } cio_cli_switch_t;
 
 static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, size_t* out_size) {
@@ -178,7 +180,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
     static const char* const restrict switches[] = {
         [CIO_CLI_SWITCH_EMIT_BYTECODE] = "emit-bytecode",
-        [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = "execute-bytecode",
+        [CIO_CLI_SWITCH_EXECUTE_BUNDLE] = "execute-bundle",
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = "mangle-identifier",
         [CIO_CLI_SWITCH_STACK_LENGTH] = "stack-length",
         [CIO_CLI_SWITCH_DISASSEMBLE] = "disassemble",
@@ -186,12 +188,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_DEBUNDLE] = "debundle",
         [CIO_CLI_SWITCH_VERSION] = "version",
         [CIO_CLI_SWITCH_FATAL_WARNINGS] = "fatal-warnings",
-        [CIO_CLI_SWITCH_WARNING] = "warning"
+        [CIO_CLI_SWITCH_WARNING] = "warning",
+        [CIO_CLI_SWITCH_HELP] = "help"
     };
 
     static const size_t switches_lengths[] = {
         [CIO_CLI_SWITCH_EMIT_BYTECODE] = sizeof("emit-bytecode") - 1,
-        [CIO_CLI_SWITCH_EXECUTE_BYTECODE] = sizeof("execute-bytecode") - 1,
+        [CIO_CLI_SWITCH_EXECUTE_BUNDLE] = sizeof("execute-bundle") - 1,
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = sizeof("mangle-identifier") - 1,
         [CIO_CLI_SWITCH_STACK_LENGTH] = sizeof("stack-length") - 1,
         [CIO_CLI_SWITCH_DISASSEMBLE] = sizeof("disassemble") - 1,
@@ -199,7 +202,9 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_DEBUNDLE] = sizeof("debundle") - 1,
         [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1,
         [CIO_CLI_SWITCH_FATAL_WARNINGS] = sizeof("fatal-warnings") - 1,
-        [CIO_CLI_SWITCH_WARNING] = sizeof("warning") - 1};
+        [CIO_CLI_SWITCH_WARNING] = sizeof("warning") - 1,
+        [CIO_CLI_SWITCH_HELP] = sizeof("help") - 1
+    };
 
     gen_arguments_parsed_t parsed = {0};
     error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
@@ -244,6 +249,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             // TODO: Fix parameter duplication here
             // TODO: Document these
+            // TODO: Move this out into a more managable structure
 
             bool all = false;
             error = gen_string_compare("all", sizeof("all"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &all);
@@ -316,7 +322,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 break;
             }
             
-            case CIO_CLI_SWITCH_EXECUTE_BYTECODE: {
+            case CIO_CLI_SWITCH_EXECUTE_BUNDLE: {
                 if(operation) {
                     error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
                     if(error) return error;
@@ -474,6 +480,26 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             case CIO_CLI_SWITCH_FATAL_WARNINGS: break; // Already handled above
             case CIO_CLI_SWITCH_WARNING: break; // Already handled above
 
+            case CIO_CLI_SWITCH_HELP: {
+                if(operation) {
+                    error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Multiple operations specified");
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple operations specified");
+                }
+
+                if(parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                }
+
+                operation = CIO_CLI_OPERATION_HELP;
+
+                break;
+            }
+
             default: return gen_error_attach_backtrace(GEN_ERROR_UNKNOWN, GEN_LINE_NUMBER, "Something went wrong while parsing arguments");
         }
     }
@@ -540,15 +566,15 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             const char* bytecode_file = NULL;
 
             if(!parsed.raw_argument_count && warn_implicit_file) {
-                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "Bytecode file not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "Bytecode bundle not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
 
                 if(warning_settings.fatal_warnings) {
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Bytecode file not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Bytecode file not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 }
             }
 
-            bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BYTECODE_FILE_FALLBACK;
+            bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BUNDLE_FILE_FALLBACK;
 
             if(stack_length == SIZE_MAX && warn_implicit_switch) {
                 error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
@@ -756,6 +782,15 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 error = cio_cli_read_file((argv + 1)[parsed.raw_argument_indices[i]], (unsigned char**) &bytecode, &bytecode_length);
                 if(error) return error;
 
+                error = gen_memory_reallocate_zeroed((void**) &buffer, buffer_size, buffer_size + bytecode_length, sizeof(unsigned char));
+                if(error) return error;
+
+                error = gen_memory_copy(&buffer[buffer_size], bytecode_length, bytecode, bytecode_length, bytecode_length);
+                if(error) return error;
+
+                error = gen_memory_free((void**) &bytecode);
+                if(error) return error;
+
                 buffer_size += bytecode_length;
             }
 
@@ -817,6 +852,59 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             break;
         }
+
+        case CIO_CLI_OPERATION_HELP: {
+            const size_t option_pad = 35;
+            const size_t suboption_pad = 30;
+
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "USAGE: %t [OPTIONS...] [ARGUMENTS...]\n", argv[0]);
+            if(error) return error;
+
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t[=FILE] SOURCE%czCompiles `SOURCE` to Cíonom bytecode\n%czPlaces output into `FILE` - otherwise `%t`", switches[CIO_CLI_SWITCH_EMIT_BYTECODE], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_EMIT_BYTECODE] + sizeof("[=FILE] SOURCE") - 1), ' ', GEN_LOG_RISING_EDGE_LENGTH + option_pad, CIO_CLI_BYTECODE_FILE_FALLBACK);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t[=ENTRY] BUNDLE%czExecutes the bundled executable `BUNDLE` - otherwise `%t`", switches[CIO_CLI_SWITCH_EXECUTE_BUNDLE], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_EXECUTE_BUNDLE] + sizeof("[=ENTRY] BUNDLE") - 1), CIO_CLI_BUNDLE_FILE_FALLBACK);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t IDENTIFIER%czMangles `IDENTIFIER` to a form suitable for native code identifier names", switches[CIO_CLI_SWITCH_MANGLE_IDENTIFIER], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_MANGLE_IDENTIFIER] + sizeof(" IDENTIFIER") - 1));
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t=LENGTH%czSets the stack length for the VM to `LENGTH` when executing bundled executables\n%czIf unspecified stack length defaults to %ui", switches[CIO_CLI_SWITCH_STACK_LENGTH], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_STACK_LENGTH] + sizeof("=LENGTH") - 1), ' ', GEN_LOG_RISING_EDGE_LENGTH + option_pad, CIO_CLI_STACK_LENGTH_FALLBACK);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t[=FILE] BYTECODE%czDisassembles the bytecode file `BYTECODE`\n%czPlaces output into `FILE` - otherwise %t", switches[CIO_CLI_SWITCH_DISASSEMBLE], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_DISASSEMBLE] + sizeof("[=FILE] BYTECODE") - 1), ' ', GEN_LOG_RISING_EDGE_LENGTH + option_pad, CIO_CLI_ASM_FILE_FALLBACK);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t[=FILE] BYTECODE...%czBundles the bytecode files `BYTECODE...` into a bundled executable\n%czPlaces output into `FILE` - otherwise %t", switches[CIO_CLI_SWITCH_BUNDLE], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_BUNDLE] + sizeof("[=FILE] BYTECODE...") - 1), ' ', GEN_LOG_RISING_EDGE_LENGTH + option_pad, CIO_CLI_BUNDLE_FILE_FALLBACK);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t BUNDLE%czExtracts bytecode files from the bundled executable `BUNDLE` - otherwise %t\n%czPlaces output into `N.ibc` where `N` was the index of the module in the bundle", switches[CIO_CLI_SWITCH_DEBUNDLE], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_DEBUNDLE] + sizeof(" BUNDLE") - 1), CIO_CLI_BUNDLE_FILE_FALLBACK, ' ', GEN_LOG_RISING_EDGE_LENGTH + option_pad);
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t%czPrints version information", switches[CIO_CLI_SWITCH_VERSION], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_VERSION]));
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t%czTreats all warnings as fatal", switches[CIO_CLI_SWITCH_FATAL_WARNINGS], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_FATAL_WARNINGS]));
+            if(error) return error;
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t=WARNING%czEnables the warning `WARNING`. Available warnings are listed below:", switches[CIO_CLI_SWITCH_WARNING], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_WARNING] + sizeof("=WARNING") - 1));
+            if(error) return error;
+            {
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\tall%czEnable all warnings", ' ', suboption_pad - (sizeof("all") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\timplicit_switch_parameter%czWarn on CLI switches which default on an unspecified parameter", ' ', suboption_pad - (sizeof("implicit_switch_parameter") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\timplicit_switch%czWarn on implicit CLI switches", ' ', suboption_pad - (sizeof("implicit_switch") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\timplicit_file%czWarn on implicit CLI file arguments", ' ', suboption_pad - (sizeof("implicit_file") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\temit_reserved_encoding%czWarn on emission of reserved bytecode encodings", ' ', suboption_pad - (sizeof("emit_reserved_encoding") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\treserved_identifier%czWarn on usages of reserved identifiers", ' ', suboption_pad - (sizeof("reserved_identifier") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\tparameter_overflow%czWarn on parameters exceeding maximum encodable value", ' ', suboption_pad - (sizeof("parameter_overflow") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\tparameter_count_mismatch%czWarn on calls which do not match the routine's declared parameter count", ' ', suboption_pad - (sizeof("parameter_count_mismatch") - 1));
+                if(error) return error;
+                error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "\tconsume_reserved_encoding%czWarn on consumption of reserved bytecode encodings", ' ', suboption_pad - (sizeof("consume_reserved_encoding") - 1));
+                if(error) return error;
+            }
+            error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "--%t%czShow this menu", switches[CIO_CLI_SWITCH_HELP], ' ', option_pad - (2 + switches_lengths[CIO_CLI_SWITCH_HELP]));
+            if(error) return error;
+
+            break;            
+        }
     }
 
     return NULL;
@@ -833,6 +921,8 @@ int main(const int argc, const char* const* const argv) {
     if(error) {
 #if GEN_BUILD_MODE == GEN_DEBUG
         gen_error_print("cionom-cli", error, GEN_ERROR_SEVERITY_FATAL);
+#else
+        gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", error->context);
 #endif
         gen_error_abort();
     }

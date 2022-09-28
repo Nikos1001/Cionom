@@ -100,17 +100,17 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 		}
 		else {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %ui", instruction->operand);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %uc", instruction->operand);
 #endif
 
             if(instruction->operand == CIO_OPERAND_MAX && vm->warning_settings->consume_reserved_encoding) {
                 // TODO: Add source info/disassembly here once debugging "stuff" is implemented
 
-                error = gen_log_formatted(vm->warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Encoding `call 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                error = gen_log_formatted(vm->warning_settings->fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom", "Encoding `push 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
 
                 if(vm->warning_settings->fatal_warnings) {
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_IN_USE, GEN_LINE_NUMBER, "Encoding `call 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_IN_USE, GEN_LINE_NUMBER, "Encoding `push 0x7F` is reserved [%tconsume_reserved_encoding]", vm->warning_settings->fatal_warnings ? "fatal_warnings, " : "");
                 }
             }
 

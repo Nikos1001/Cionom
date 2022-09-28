@@ -25,8 +25,8 @@
     - Breakponts
     - Debug info
     - Disassembly
+  - Write some tutorials
   - Document debug info format
-  - Document `--bundle`, `--debundle` and `--disassemble`
   - Update Esolang wiki
   - Do checks for CLI params with no effect/raw args to operations which ignore them
   - Do parameter checking on `warning_settings` and document it as a parameter
