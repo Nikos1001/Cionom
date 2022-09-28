@@ -70,7 +70,10 @@ static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file
     gen_filesystem_handle_t handle = {0};
     error = gen_filesystem_handle_open(path, GEN_STRING_NO_BOUNDS, &handle);
     if(error) return error;
-    
+
+    error = gen_filesystem_handle_lock(&handle);
+    if(error) return error;
+
     error = gen_filesystem_handle_file_size(&handle, out_size);
     if(error) return error;
 
@@ -78,6 +81,9 @@ static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file
     if(error) return error;
 
     error = gen_filesystem_handle_file_read(&handle, 0, *out_size, *out_file);
+    if(error) return error;
+
+    error = gen_filesystem_handle_unlock(&handle);
     if(error) return error;
 
     error = gen_filesystem_handle_close(&handle);
@@ -113,7 +119,13 @@ static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned
     error = gen_filesystem_handle_open(path, GEN_STRING_NO_BOUNDS, &handle);
     if(error) return error;
 
+    error = gen_filesystem_handle_lock(&handle);
+    if(error) return error;
+
     error = gen_filesystem_handle_file_write(&handle, buffer, size);
+    if(error) return error;
+
+    error = gen_filesystem_handle_unlock(&handle);
     if(error) return error;
 
     error = gen_filesystem_handle_close(&handle);
@@ -123,7 +135,6 @@ static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned
 }
 
 // TODO: Separate out main
-// TODO: Pull out conglomerated filesystem procs into functions with locking
 
 static gen_error_t* gen_main(const size_t argc, const char* const restrict* const restrict argv) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
@@ -133,7 +144,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
-    // TODO: `--help` - Print help menu
     // TODO: `--verbose` - Verbose output
 
     // TODO: `--mapfile` - Redirect exported routine names to be different to their internal names based on a file. Also contains list of files for constant data under `--extension=constants`

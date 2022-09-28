@@ -226,8 +226,6 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
     out_instance->warning_settings = warning_settings;
 
-    // TODO: Find a way to reduce the massive number of allocations and duplications happening in vm init
-
 	out_instance->stack_length = stack_length;
 	error = gen_memory_allocate_zeroed((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
     if(error) return error;
@@ -293,13 +291,19 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 if(out_instance->bytecode[i].callables[j].offset != CIO_ROUTINE_EXTERNAL) continue;
 
                 cio_callable_t* callable = NULL;
+#ifdef __ANALYZER
+                cio_callable_t dummy = {0};
+                callable = &dummy;
+#endif
                 error = cio_vm_get_identifier(out_instance, out_instance->bytecode[i].callables[j].identifier, &callable);
-                if(error->type == GEN_ERROR_NO_SUCH_OBJECT) {
+                if(error && error->type == GEN_ERROR_NO_SUCH_OBJECT) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
                     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving %t in external code", out_instance->bytecode[i].callables[j].identifier);
 #endif
                     error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
                     if(error) return error;
+
+                    gen_error_free(&error);
     
                     continue;
                 }

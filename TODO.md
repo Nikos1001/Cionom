@@ -6,7 +6,9 @@
   - Set up CI
   - Pages for documentation
   - Start doing semver releases (Fix up a *hecc* tonne of TODOs before doing this!)
+    - Place version (+magic?) into bytecode modules so VM can verify version <= runtime version
 - Implementation
+  - Packaged lib "on-load"
   - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output
@@ -19,7 +21,6 @@
     - Document default packaged library
     - Add little opener to `README.md`
   - Expose bundles in lib API
-  - Warn for/Prevent emission of routines at/beyond offset 0xFFFFFFFF
   - Document "Source-Only Extensions"
   - Debugger
     - Breakponts

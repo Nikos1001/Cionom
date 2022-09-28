@@ -30,6 +30,7 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 
 	do {
 		if((c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r')) {
+            if(offset + 1 >= source_length) break;
 			(c = source[++offset]);
 			continue;
 		}
@@ -43,12 +44,17 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 		if(c == ':') {
 			token->type = CIO_TOKEN_BLOCK;
 			token->length = 1;
+            if(offset + 1 >= source_length) break;
 			(c = source[++offset]);
 			continue;
 		}
 		else if((c >= '0' && c <= '9')) {
 			token->type = CIO_TOKEN_NUMBER;
 			do {
+                if(offset + 1 >= source_length) {
+                    token->length = offset - token->offset;
+                    break;
+                }
 				(c = source[++offset]);
 			} while((c >= '0' && c <= '9'));
 			token->length = offset - token->offset;
@@ -57,6 +63,10 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 		else {
 			token->type = CIO_TOKEN_IDENTIFIER;
 			do {
+                if(offset + 1 >= source_length) {
+                    token->length = offset - token->offset;
+                    break;
+                }
 				(c = source[++offset]);
 			} while(!(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == '\r'));
 			token->length = offset - token->offset;

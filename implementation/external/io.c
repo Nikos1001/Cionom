@@ -6,6 +6,7 @@
 
 #include <genlog.h>
 #include <genstring.h>
+#include <genfilesystem.h>
 
 GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_BEGIN)
 GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_IGNORE("-Weverything"))
@@ -78,8 +79,18 @@ gen_error_t* readn(cio_vm_t* const restrict vm) {
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	int result = scanf("%zu", &caller[caller_frame->height - 1]); // TODO: Replace with Genstone IO
-    if(result == EOF) return gen_error_attach_backtrace_formatted(gen_error_type_from_errno(), GEN_LINE_NUMBER, "Could not read number from console: %t", gen_error_description_from_errno());
+    char buffer[32 + 1] = {0};
+
+    error = gen_filesystem_handle_file_read(&GEN_FILESYSTEM_HANDLE_STDIN, 0, sizeof(buffer) - 1, (unsigned char*) buffer);
+    if(error) return error;
+
+    for(size_t i = sizeof(buffer) - 1; i != SIZE_MAX; --i) {
+        char c = buffer[i];
+        if(c == ' ' || c == '\t' || c == '\n' || c == '\r') buffer[i] = '\0';
+    }
+
+    error = gen_string_number(buffer, sizeof(buffer), GEN_STRING_NO_BOUNDS, &caller[caller_frame->height - 1]);
+    if(error) return error;
 
 	return NULL;
 }

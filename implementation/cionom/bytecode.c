@@ -204,7 +204,6 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 				code[code_size - 1] = (cio_instruction_t) {(uint8_t) called, CIO_CALL};
 			}
 
-            // TODO: Do a first pass over the program to determine code size and make do with one alloc vs. many reallocs
 			error = gen_memory_reallocate_zeroed((void**) &code, code_size, code_size + 1, sizeof(unsigned char));
 			if(error) return error;
 
