@@ -122,7 +122,7 @@ static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned
     error = gen_filesystem_handle_lock(&handle);
     if(error) return error;
 
-    error = gen_filesystem_handle_file_write(&handle, buffer, size);
+    error = gen_filesystem_handle_file_write(&handle, buffer, 0, size);
     if(error) return error;
 
     error = gen_filesystem_handle_unlock(&handle);
