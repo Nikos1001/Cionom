@@ -302,8 +302,6 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 #endif
                     error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
                     if(error) return error;
-
-                    gen_error_free(&error);
     
                     continue;
                 }
