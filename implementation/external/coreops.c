@@ -47,8 +47,8 @@ gen_error_t* copy__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_lef
 }
 
 
-//* `copy*[+v]=v` - Copy value into pointer variably indexed.
-//* @note Treats pointer and value as a char.
+//* `copy*[+v]=v` - Copy variable into pointer variably indexed.
+//* @note Treats pointer and value as a size_t.
 //* @param [0] The stack index containing the pointer to copy to.
 //* @param [1] The stack index containing the index to apply to pointer.
 //* @param [2] The stack index containing the value to copy.
@@ -62,7 +62,7 @@ gen_error_t* copy__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_lef
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	((size_t*) caller[current[0]])[caller[current[1]]] = caller[current[2]];
+	((size_t*)caller[current[0]])[caller[current[1]]] = caller[current[2]];
 
 	return NULL;
 }
@@ -87,13 +87,13 @@ gen_error_t* copy__cionom_mangled_grapheme_equals__cionom_mangled_grapheme_aster
 	return NULL;
 }
 
-//* `copy=*[+]v` - Copy value from pointer indexed.
-//* @note Treats pointer and value as a char.
+//* `copy=*[+v]` - Copy value from pointer indexed.
+//* @note Treats pointer and value as a size_t.
 //* @param [0] The stack index to copy to.
 //* @param [1] The stack index containing the pointer to copy from.
 //* @param [2] The stack index containing the offset to apply. 
 //* @reserve Empty.
-gen_error_t* copy__cionom_mangled_grapheme_equals__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_right_bracketv(cio_vm_t* const restrict vm) {
+gen_error_t* copy__cionom_mangled_grapheme_equals__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plusv__cionom_mangled_grapheme_right_bracket(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) copy__cionom_mangled_grapheme_equals__cionom_mangled_grapheme_asterisk__cionom_mangled_grapheme_left_bracket__cionom_mangled_grapheme_plus__cionom_mangled_grapheme_right_bracketc, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -102,7 +102,7 @@ gen_error_t* copy__cionom_mangled_grapheme_equals__cionom_mangled_grapheme_aster
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
-	*(size_t*) &caller[current[0]] = ((size_t*) caller[current[1]])[caller[current[2]]];
+	caller[current[0]] = ((size_t*)caller[current[1]])[caller[current[2]]];
 
 	return NULL;
 }
