@@ -102,4 +102,23 @@ gen_error_t* copy__cionom_mangled_grapheme_equalsv(cio_vm_t* const restrict vm) 
 	return NULL;
 }
 
+//* `copy=cvv` -  Copy variable from caller stack frame into variable stack index.
+//* @param [0] The stack index to copy into.
+//* @param [1] The stack index of the stack index in the caller to copy from.
+//* @reserve Empty.
+gen_error_t* copy__cionom_mangled_grapheme_equalscvv(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) copy__cionom_mangled_grapheme_equalscvv, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller_caller, 2);
+
+    caller[current[0]] = caller_caller[caller[current[1]]];
+
+	return NULL;
+}
+
 CIO_EXTLIB_END_DEFS
