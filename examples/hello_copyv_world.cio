@@ -3,6 +3,13 @@ printc* 1
 alloc 1
 free* 1
 copy=v 2
+copy=cvv 2
+
+printer 1
+:
+    copy=cvv 1 0
+    printc* 1
+:
 
 __cionom_entrypoint 0
 :
@@ -24,6 +31,7 @@ __cionom_entrypoint 0
 
     copy=v 14 0
 
-    printc* 14
+    printer 14
+
     free* 14
 :
