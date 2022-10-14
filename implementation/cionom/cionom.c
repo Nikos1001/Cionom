@@ -192,6 +192,7 @@ gen_error_t* cio_resolve_external(const char* const restrict identifier, cio_rou
     error = gen_string_length(mangled, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &mangled_length);
 	if(error) return error;
 
+    // TODO: Demangle on error
 	error = gen_dynamic_library_handle_get_symbol(lib, mangled, mangled_length, (void*) out_function);
 	if(error) return error;
 

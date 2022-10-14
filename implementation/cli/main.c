@@ -685,6 +685,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             char* cas_file = NULL;
             size_t cas_file_size = 0;
 
+            // TODO: This appears to bork symbol resolution somehow
             for(size_t i = 0; i < bytecode_meta->callables_length; ++i) {
                 if(bytecode_meta->callables[i].offset == CIO_ROUTINE_EXTERNAL) {
                     error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[i].identifier_length + 9, sizeof(char));

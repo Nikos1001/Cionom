@@ -33,6 +33,7 @@ docs/*
 out/*
 tmp/*
 vulkan/*
+bug/*
 
 filename
 test.c
