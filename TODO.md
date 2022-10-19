@@ -35,3 +35,5 @@
   - "try-catch" esque. mechanism for catching Genstone errors in Cíonom
     - Update the catch divide-by-zero example
   - Remove all exposed headers
+  - Elide final `0xFF` in a bundled executable
+  - Shell completion

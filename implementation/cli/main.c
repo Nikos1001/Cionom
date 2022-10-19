@@ -674,10 +674,10 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
             if(vm.bytecode_length != 1) {
-                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+                error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, bytecode_file);
                 if(error) return error;
 
-                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, file);
+                return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Cannot disassemble executable bundle of %uz modules `%t`. Pass individual modules instead", vm.bytecode_length, bytecode_file);
             }
 
             cio_bytecode_t* bytecode_meta = &vm.bytecode[0];
@@ -826,7 +826,11 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 size_t offset = 1;
                 uint32_t last_routine = 0;
                 for(size_t j = 0; j < callables_length; ++j) {
-                    last_routine = *(uint32_t*) &bytecode[i + offset];
+                    // This avoids alignment shenanigans
+                    // Doesn't really matter but ASan has a hissy fit
+                    error = gen_memory_copy(&last_routine, sizeof(uint32_t), &bytecode[i + offset], bytecode_length - (i + offset), sizeof(uint32_t));
+                    if(error) return error;
+
                     offset += 4;
 
                     size_t stride = 0;

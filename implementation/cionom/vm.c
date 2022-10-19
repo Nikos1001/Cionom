@@ -58,7 +58,6 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
-
 	cio_frame_t* const frame = &vm->frames[vm->frames_used - 1];
 #ifdef __ANALYZER
     cio_instruction_t* instruction = calloc(1, sizeof(cio_instruction_t));
@@ -73,11 +72,11 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 	size_t argc = 0;
 	while(!(instruction->opcode == CIO_CALL && instruction->operand == CIO_OPERAND_MAX)) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc in BC %uz @ %uz", instruction, vm->current_bytecode, frame->execution_offset);
+        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(uint8_t*) &instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
 #endif
 		if(instruction->opcode == CIO_CALL) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %ui", instruction->operand);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %uc", instruction->operand);
 #endif
 
 			// Callee takes ownership of lower stack items
@@ -138,6 +137,7 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 #endif
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(uint8_t*) &instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
 	gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "ret");
 #endif
 
@@ -252,6 +252,11 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     if(error) return error;
 
     for(size_t i = 0; i < bytecode_length; ++i) {
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Began decoding bytecode module %uz at offset %p in bundle", out_instance->bytecode_length, i);
+            if(error) return error;
+#endif
+
         error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, out_instance->bytecode_length, out_instance->bytecode_length + 1, sizeof(cio_bytecode_t));
         if(error) return error;
 
@@ -294,11 +299,20 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 #endif
         }
 
-        out_instance->bytecode[out_instance->bytecode_length].bytecode = bytecode + offset;
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Set bytecode module %uz code block at offset %p in bundle", out_instance->bytecode_length, offset + i);
+        if(error) return error;
+#endif
+        size_t code_block_offset = i + offset;
+        out_instance->bytecode[out_instance->bytecode_length].bytecode = &bytecode[i + offset];
 
         for(i += offset + out_instance->bytecode[out_instance->bytecode_length].callables[out_instance->bytecode[out_instance->bytecode_length].callables_length - 1].offset; bytecode[i] != 0xFF; ++i);
 
-        out_instance->bytecode[out_instance->bytecode_length].size = (i - offset) + 1;
+        out_instance->bytecode[out_instance->bytecode_length].size = (i - code_block_offset) + 1;
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode code block size %uz", out_instance->bytecode[out_instance->bytecode_length].size);
+        if(error) return error;
+#endif
 
         ++out_instance->bytecode_length;
     }
