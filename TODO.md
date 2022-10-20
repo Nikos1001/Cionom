@@ -37,3 +37,4 @@
   - Elide final `0xFF` in a bundled executable
   - Shell completion
   - Expose debug VM as runtime CLI option
+  - Add library routine for calling by symbol

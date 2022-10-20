@@ -118,6 +118,9 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
                         // TODO: Implement breakpoints
                         break;
                     }
+                    default: {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Extension ID %uc is unrecognized in bytecode %uz @ %uz", vm->stack[frame->base + frame->height - 1], vm->current_bytecode, frame->execution_offset);
+                    }
                 }
     
                 frame->height--; // Remove extension ID
@@ -296,7 +299,6 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         module->callables_length = bytecode[i] & 0b01111111;
 
         size_t offset = 1;
-        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "%uc", bytecode[i]);
         if(bytecode[i] & 0b10000000) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
             error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Module %uz contains extension data", out_instance->bytecode_length);
