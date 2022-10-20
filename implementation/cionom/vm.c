@@ -70,19 +70,21 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 #endif
 
 	size_t argc = 0;
+    bool elide_reserve_space = false;
 	while(!(instruction->opcode == CIO_CALL && instruction->operand == CIO_OPERAND_MAX)) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(uint8_t*) &instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
+        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(const uint8_t*) instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
 #endif
 		if(instruction->opcode == CIO_CALL) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %uc", instruction->operand);
+			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %uc (argc = %uz (effective argc = %uz), argc[0] = %uz)", instruction->operand, argc, argc - (1 * !elide_reserve_space), vm->stack[frame->base + frame->height - argc]);
 #endif
 
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
-			frame->height -= argc - 1;
-			error = cio_vm_dispatch_call(vm, instruction->operand, argc - 1);
+			frame->height -= argc - (1 * !elide_reserve_space);
+			error = cio_vm_dispatch_call(vm, instruction->operand, argc - (1 * !elide_reserve_space));
+            elide_reserve_space = false;
 #ifdef __ANALYZER
 			if(error) {
                 free(instruction);
@@ -101,6 +103,31 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
 			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %uc", instruction->operand);
 #endif
+
+            if(instruction->operand == CIO_OPERAND_MAX && frame->height) {
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+    			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Processing extension ID %uc", vm->stack[frame->base + frame->height - 1]);
+#endif
+                switch(vm->stack[frame->base + frame->height - 1]) {
+                    case CIO_EXTENSION_ID_ELIDE_RESERVE_SPACE: {
+                        // vm->bytecode[vm->current_bytecode].extension_settings.elide_reserve_space
+                        elide_reserve_space = true;
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_BREAKPOINTS: {
+                        // TODO: Implement breakpoints
+                        break;
+                    }
+                }
+    
+                frame->height--; // Remove extension ID
+                argc = 0;
+#ifdef __ANALYZER
+#else
+        		instruction = (const cio_instruction_t*) &vm->bytecode[vm->current_bytecode].bytecode[++frame->execution_offset];
+#endif
+                continue;
+           }
 
             if(instruction->operand == CIO_OPERAND_MAX && vm->warning_settings->consume_reserved_encoding) {
                 // TODO: Add source info/disassembly here once debugging "stuff" is implemented
@@ -178,8 +205,6 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 
 	return NULL;
 }
-
-#include <genlog.h>
 
 gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_identifier, GEN_FILE_NAME);
@@ -266,15 +291,71 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, out_instance->bytecode_length, out_instance->bytecode_length + 1, sizeof(cio_bytecode_t));
         if(error) return error;
 
-        out_instance->bytecode[out_instance->bytecode_length].callables_length = bytecode[i];
+        cio_bytecode_t* module = &out_instance->bytecode[out_instance->bytecode_length];
 
-        if(out_instance->bytecode[out_instance->bytecode_length].callables_length) {
-            error = gen_memory_allocate_zeroed((void**) &out_instance->bytecode[out_instance->bytecode_length].callables, out_instance->bytecode[out_instance->bytecode_length].callables_length, sizeof(cio_callable_t));
+        module->callables_length = bytecode[i] & 0b01111111;
+
+        size_t offset = 1;
+        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "%uc", bytecode[i]);
+        if(bytecode[i] & 0b10000000) {
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Module %uz contains extension data", out_instance->bytecode_length);
+            if(error) return error;
+#endif
+            ++offset;
+
+            do {
+                error = gen_memory_reallocate_zeroed((void**) &module->extensions, module->extensions_length, module->extensions_length + 1, sizeof(cio_extension_data_t));
+                if(error) return error;
+
+                cio_extension_data_t* extension = &module->extensions[module->extensions_length];
+
+                // Doing this here because otherwise clang thinks all cases have been covered
+                switch(bytecode[offset] & 0b01111111) {
+                    case CIO_EXTENSION_ID_ELIDE_RESERVE_SPACE: {
+                        module->extension_settings.elide_reserve_space = true;
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_CONSTANTS: {
+                        module->extension_settings.constants = true;
+                        // TODO: Process extension data for `CIO_EXTENSION_ID_CONSTANTS`
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_NIL_CALLS: {
+                        module->extension_settings.nil_calls = true;
+                        // TODO: Process extension data for `CIO_EXTENSION_ID_NIL_CALLS`
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_BREAKPOINTS: {
+                        module->extension_settings.breakpoints = true;
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_DEBUG_INFO: {
+                        module->extension_settings.debug_info = true;
+                        // TODO: Process extension data for `CIO_EXTENSION_ID_DEBUG_INFO`
+                        break;
+                    }
+                    case CIO_EXTENSION_ID_ENCODE_STACK_LENGTH: {
+                        module->extension_settings.encode_stack_length = true;
+                        // TODO: Process extension data for `CIO_EXTENSION_ID_DEBUG_INFO`
+                        break;
+                    }
+                    default: {
+                        return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Extension ID %uc is unrecognized in bytecode %uz", extension->id, out_instance->bytecode_length);
+                    }
+                }
+                extension->id = bytecode[offset] & 0b01111111;
+
+                module->extensions_length++;
+            } while(bytecode[offset] & 0b10000000);
+        }
+
+        if(module->callables_length) {
+            error = gen_memory_allocate_zeroed((void**) &module->callables, module->callables_length, sizeof(cio_callable_t));
             if(error) return error;
         }
 
-        size_t offset = 1;
-        for(size_t j = 0; j < out_instance->bytecode[out_instance->bytecode_length].callables_length; ++j) {
+        for(size_t j = 0; j < module->callables_length; ++j) {
 #ifdef __ANALYZER
             cio_routine_table_entry_t* entry = malloc(sizeof(cio_routine_table_entry_t));
 #else
@@ -292,10 +373,10 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
             if(error) return error;
 #endif
 
-            out_instance->bytecode[out_instance->bytecode_length].callables[j] = (cio_callable_t) {entry->name, stride, cio_vm_internal_execute_routine, out_instance->bytecode_length, entry->offset, j};
+            module->callables[j] = (cio_callable_t) {entry->name, stride, cio_vm_internal_execute_routine, out_instance->bytecode_length, entry->offset, j};
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Appended routine table entry for %t routine `%tz` in bytecode module %uz at index %uz/%uz", entry->offset == CIO_ROUTINE_EXTERNAL ? "external" : "internal", entry->name, stride, out_instance->bytecode_length, j, out_instance->bytecode[out_instance->bytecode_length].callables_length);
+            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Appended routine table entry for %t routine `%tz` in bytecode module %uz at index %uz/%uz", entry->offset == CIO_ROUTINE_EXTERNAL ? "external" : "internal", entry->name, stride, out_instance->bytecode_length, j, module->callables_length);
             if(error) return error;
 #endif
 
@@ -310,18 +391,18 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         if(error) return error;
 #endif
         size_t code_block_offset = i + offset;
-        out_instance->bytecode[out_instance->bytecode_length].bytecode = &bytecode[i + offset];
+        module->bytecode = &bytecode[i + offset];
 
         i += offset;
 
         // Add on offset of last callable
-        i += out_instance->bytecode[out_instance->bytecode_length].callables[out_instance->bytecode[out_instance->bytecode_length].callables_length - 1].offset;
+        i += module->callables[module->callables_length - 1].offset;
 
         for(; bytecode[i] != 0xFF; ++i);
 
-        out_instance->bytecode[out_instance->bytecode_length].size = (i - code_block_offset) + 1;
+        module->size = (i - code_block_offset) + 1;
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode code block size %uz", out_instance->bytecode[out_instance->bytecode_length].size);
+        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode code block size %uz", module->size);
         if(error) return error;
 #endif
 

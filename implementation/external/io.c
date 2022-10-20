@@ -33,11 +33,29 @@ gen_error_t* printc__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict v
 	return NULL;
 }
 
-//* `printn` - Print value from stack.
-//* @param [0] The stack index containing the value to print.
+//* `printn` - Print value.
+//* @param [0] The value to print.
 //* @reserve Empty.
 gen_error_t* printn(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) printn, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+	error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom", "%uz", (size_t) current[0]);
+	if(error) return error;
+
+	return NULL;
+}
+
+//* `printnv` - Print value from stack.
+//* @param [0] The stack index containing the value to print.
+//* @reserve Empty.
+gen_error_t* printnv(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) printnv, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");

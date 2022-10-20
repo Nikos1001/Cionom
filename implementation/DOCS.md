@@ -74,7 +74,7 @@ push id
 [push data]
 push 0x7F
 ```
-(Routine IDs and the format of extension data is detailed in the table above)
+(Extension IDs and the format of extension data is detailed in the table above)
 
 ## Command Line Reference
 

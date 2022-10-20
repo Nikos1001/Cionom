@@ -36,3 +36,4 @@
   - Remove all exposed headers
   - Elide final `0xFF` in a bundled executable
   - Shell completion
+  - Expose debug VM as runtime CLI option

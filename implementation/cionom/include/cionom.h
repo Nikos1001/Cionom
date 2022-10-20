@@ -61,6 +61,15 @@ typedef struct {
     bool routine_declared_defined;
 } cio_warning_settings_t;
 
+typedef struct {
+    bool elide_reserve_space;
+    bool constants;
+    bool nil_calls;
+    bool breakpoints;
+    bool debug_info;
+    bool encode_stack_length;
+} cio_extension_settings_t;
+
 /**
  * The type of a source token.
  */
@@ -220,10 +229,47 @@ typedef struct {
     size_t routine_index;
 } cio_callable_t;
 
+typedef struct {
+
+} cio_module_debug_info_t;
+
+typedef enum {
+    CIO_EXTENSION_ID_ELIDE_RESERVE_SPACE = 0,
+    CIO_EXTENSION_ID_CONSTANTS = 2,
+    CIO_EXTENSION_ID_NIL_CALLS = 3,
+    CIO_EXTENSION_ID_BREAKPOINTS = 4,
+    CIO_EXTENSION_ID_DEBUG_INFO = 5,
+    CIO_EXTENSION_ID_ENCODE_STACK_LENGTH = 6
+} cio_extension_id_t;
+
+typedef struct {
+    cio_extension_id_t id;
+    union {
+        struct {} elide_reserve_space;
+        struct {
+            size_t size;
+            uint8_t* data;
+        } constants;
+        struct {
+            size_t nil_call_index;
+            size_t nil_call_frame_index;
+        } nil_calls;
+        struct {} breakpoints;
+        cio_module_debug_info_t debug_info;
+        struct {
+            size_t length;
+        } encode_stack_length;
+    };
+} cio_extension_data_t;
+
 /**
  * A bytecode file consumed by the VM.
  */
 typedef struct {
+    cio_extension_settings_t extension_settings;
+    cio_extension_data_t* extensions;
+    size_t extensions_length;
+
     /**
      * The bytecode data to execute.
      */
