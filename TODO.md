@@ -8,7 +8,6 @@
   - Start doing semver releases (Fix up a *hecc* tonne of TODOs before doing this!)
     - Place version (+magic?) into bytecode modules so VM can verify version <= runtime version
 - Implementation
-  - Packaged lib "on-load"
   - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output

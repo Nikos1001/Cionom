@@ -253,6 +253,10 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 	error = gen_dynamic_library_handle_open(external_lib_name, sizeof(external_lib_name) - 1, &out_instance->external_lib);
     if(error) return error;
 
+    cio_routine_function_t onload = NULL;
+    error = gen_dynamic_library_handle_get_symbol(&out_instance->external_lib, "__cionom_extlib_onload", sizeof("__cionom_extlib_onload") - 1, (void**) &onload);
+    if(error && error->type != GEN_ERROR_NO_SUCH_OBJECT) return error;
+
     for(size_t i = 0; i < bytecode_length; ++i) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
             error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Began decoding bytecode module %uz at offset %p in bundle", out_instance->bytecode_length, i);
@@ -355,6 +359,11 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 out_instance->bytecode[i].callables[j].routine_index = callable->routine_index;
             }
         }
+    }
+
+    if(onload) {
+        error = onload(out_instance);
+        if(error) return error;
     }
 
 	return NULL;
