@@ -776,6 +776,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         }
 
         case CIO_CLI_OPERATION_BUNDLE: {
+            // TODO: Verify that modules are actually modules
+
             if(!parsed.raw_argument_count) {
                 error = gen_log(GEN_LOG_LEVEL_FATAL, "cionom-cli", "No bytecode files specified");
                 if(error) return error;
@@ -816,6 +818,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
             // TODO: Use debug info for filenames
+            // TODO: Verify that modules are actually modules
 
             size_t bytecode_count = 0;
 

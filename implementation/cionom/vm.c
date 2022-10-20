@@ -235,6 +235,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
+    // TODO: Verify that modules are actually modules
+
 	if(!bytecode) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode` was `NULL`");
 	if(!bytecode_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`bytecode_length` was 0");
 	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
@@ -306,7 +308,12 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         size_t code_block_offset = i + offset;
         out_instance->bytecode[out_instance->bytecode_length].bytecode = &bytecode[i + offset];
 
-        for(i += offset + out_instance->bytecode[out_instance->bytecode_length].callables[out_instance->bytecode[out_instance->bytecode_length].callables_length - 1].offset; bytecode[i] != 0xFF; ++i);
+        i += offset;
+
+        // Add on offset of last callable
+        i += out_instance->bytecode[out_instance->bytecode_length].callables[out_instance->bytecode[out_instance->bytecode_length].callables_length - 1].offset;
+
+        for(; bytecode[i] != 0xFF; ++i);
 
         out_instance->bytecode[out_instance->bytecode_length].size = (i - code_block_offset) + 1;
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
