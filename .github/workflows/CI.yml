@@ -18,7 +18,7 @@ jobs:
         submodules: 'true'
         
     - name: Build
-      run: make
+      run: make EXTRA_CFLAGS=-Wno-unknown-warning-option # The GHCI runner version of clang is *ancient*
       
     - name: Test
       run: make test
