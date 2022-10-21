@@ -35,7 +35,7 @@ jobs:
         languages: ${{ matrix.language }}
         
     - name: Build
-      run: make
+      run: make EXTRA_CFLAGS=-Wno-unknown-warning-option # The GHCI runner version of clang is *ancient*
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
