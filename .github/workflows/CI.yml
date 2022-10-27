@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [ "trunk" ]
+  pull_request:
+    branches: [ "trunk" ]
+  workflow_dispatch:
+
+jobs:
+  CI:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+        
+    - name: Build
+      run: make EXTRA_CFLAGS=-Wno-unknown-warning-option # The GHCI runner version of clang is *ancient*
+      
+    - name: Test
+      run: make test
