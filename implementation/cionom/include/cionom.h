@@ -491,7 +491,7 @@ extern gen_error_t* cio_module_emit(const cio_program_t* const restrict program,
  * @param out_callable pointer to storage for a pointer to the retrieved callable.
  * @return gen_error_t* 
  */
-extern gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable);
+extern gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable, bool vminit);
 
 /**
  * Creates and initializes a VM to execute a bytecode module or bundled executable.
@@ -513,8 +513,17 @@ extern gen_error_t* cio_vm_free(cio_vm_t* const restrict instance);
 /**
  * Dispatches a call to a callable in a VM.
  * @param[in,out] vm the VM to call in.
- * @param[in] callable the index of the callable to call.
- * @param[in] argc the number of unframed stack elements to take when constructing the callee stack frame.
+ * @param[in] callable the callable to call.
+ * @param[in] argc the number of unframed (orphaned) stack elements to take when constructing the callee stack frame.
+ * @return An error, otherwise `NULL`. 
+ */
+extern gen_error_t* cio_vm_dispatch_callable(cio_vm_t* const restrict vm, const cio_callable_t* callable, const size_t argc);
+
+/**
+ * Dispatches a call to a routine index in a VM.
+ * @param[in,out] vm the VM to call in.
+ * @param[in] callable the index of the routine to call.
+ * @param[in] argc the number of unframed (orphaned) stack elements to take when constructing the callee stack frame.
  * @return An error, otherwise `NULL`. 
  */
 extern gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc);
@@ -544,7 +553,7 @@ extern gen_error_t* cio_vm_push(cio_vm_t* const restrict vm);
  * @param[out] out_pointer pointer to storage for a pointer to the stack frame.
  * @return An error, otherwise `NULL`.
  */
-extern gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer);
+extern gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, cio_frame_t** const restrict out_pointer);
 /**
  * Gets a pointer into the stack for a stack frame.
  * @param[in] vm the VM containing the stack.

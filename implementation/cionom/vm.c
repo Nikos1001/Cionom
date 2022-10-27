@@ -174,22 +174,21 @@ static gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm)
 	return NULL;
 }
 
-gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc) {
-	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dispatch_call, GEN_FILE_NAME);
+gen_error_t* cio_vm_dispatch_callable(cio_vm_t* const restrict vm, const cio_callable_t* callable, const size_t argc) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dispatch_callable, GEN_FILE_NAME);
 	if(error) return error;
 
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
-	if(callable >= vm->bytecode[vm->current_bytecode].callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`callable` was greater than the current module's callables length");
 
-	error = cio_vm_push_frame(vm);
+    error = cio_vm_push_frame(vm);
     if(error) return error;
 
 	// Construct call
-    size_t callable_remote_index = vm->bytecode[vm->current_bytecode].callables[callable].routine_index;
+    size_t callable_remote_index = callable->routine_index;
 	vm->frames[vm->frames_used - 1].height = argc;
-	vm->frames[vm->frames_used - 1].execution_offset = vm->bytecode[vm->current_bytecode].callables[callable].offset;
+	vm->frames[vm->frames_used - 1].execution_offset = callable->offset;
     size_t old_bytecode = vm->current_bytecode;
-    vm->current_bytecode = vm->bytecode[vm->current_bytecode].callables[callable].bytecode_index;
+    vm->current_bytecode = callable->bytecode_index;
 
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable_remote_index, (void*) vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
@@ -209,7 +208,17 @@ gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t call
 	return NULL;
 }
 
-gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable) {
+gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_dispatch_call, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(callable >= vm->bytecode[vm->current_bytecode].callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "`callable` was greater than the current module's callables length");
+
+	return cio_vm_dispatch_callable(vm, &vm->bytecode[vm->current_bytecode].callables[callable], argc);
+}
+
+gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable, bool vminit) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_identifier, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -231,6 +240,9 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
         // TODO: Maybe this should be a warning
         if(!vm->bytecode_length) gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Executable bundle has no callables");
 #endif
+
+    cio_callable_t* extref = NULL;    
+
     for(size_t i = 0; i < vm->bytecode_length; ++i) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
         // TODO: Maybe this should be a warning
@@ -241,18 +253,31 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
             gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t` against `%t` from bytecode module %uz routine %uz/%uz...", identifier, vm->bytecode[i].callables[j].identifier, i, j, vm->bytecode[i].callables_length);
 #endif
 
-            if(vm->bytecode[i].callables[j].offset == CIO_ROUTINE_EXTERNAL) continue;
-
             bool equal = false;
             if(vm->bytecode[i].callables[j].identifier_length == len) {
                 error = gen_string_compare(identifier, GEN_STRING_NO_BOUNDS, vm->bytecode[i].callables[j].identifier, GEN_STRING_NO_BOUNDS, vm->bytecode[i].callables[j].identifier_length, &equal);
                 if(error) return error;
             }
 
+            if(vm->bytecode[i].callables[j].offset == CIO_ROUTINE_EXTERNAL) {
+                if(equal) extref = &vm->bytecode[i].callables[j]; // Fallback to pure-external routine
+                continue;
+            }
+
             if(equal) {
                 *out_callable = &vm->bytecode[i].callables[j];
                 return NULL;
             }
+        }
+    }
+
+    if(!vminit) {
+        if(extref) {
+#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
+            gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom", "Resolving identifier %t to purely external callable", identifier);
+#endif
+            *out_callable = extref;
+            return NULL;
         }
     }
 
@@ -425,7 +450,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t`...", out_instance->bytecode[i].callables[j].identifier);
 #endif
 
-                error = cio_vm_get_identifier(out_instance, out_instance->bytecode[i].callables[j].identifier, &callable);
+                error = cio_vm_get_identifier(out_instance, out_instance->bytecode[i].callables[j].identifier, &callable, true);
                 if(error && error->type == GEN_ERROR_NO_SUCH_OBJECT) {
 #if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
                     gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving `%t` in external code", out_instance->bytecode[i].callables[j].identifier);
@@ -488,7 +513,7 @@ gen_error_t* cio_vm_free(cio_vm_t* const restrict instance) {
 	return NULL;
 }
 
-gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer) {
+gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, cio_frame_t** restrict out_pointer) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_get_frame, GEN_FILE_NAME);
 	if(error) return error;
 

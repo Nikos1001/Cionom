@@ -24,7 +24,7 @@
  * @param offset the offset of the stack frame back from the current frame.
  */
 #define CIO_EXTLIB_GET_FRAME_EHD(vm, name, offset) \
-    const cio_frame_t* name##_frame = NULL; \
+    cio_frame_t* name##_frame = NULL; \
 	size_t* name = NULL; \
 	do { \
         error = cio_vm_get_frame(vm, offset, &name##_frame); \

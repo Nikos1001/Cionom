@@ -4,6 +4,8 @@
 #include <cioextlib.h>
 #include <cionom.h>
 
+#include <genmemory.h>
+
 CIO_EXTLIB_BEGIN_DEFS
 
 //* `copy*[+]=c` - Copy value into pointer indexed.
@@ -160,6 +162,106 @@ gen_error_t* copy__cionom_mangled_grapheme_equalscvv(cio_vm_t* const restrict vm
     caller[current[0]] = caller_caller[caller[current[1]]];
 
 	return NULL;
+}
+
+//* `callv` - Call a routine at an index. The `callv` call itself is transparent and acts as if the function itself was called except the first parameter.
+//* TODO: Add variadic annotation on invocations of this once implemented .
+//* @param [0] The stack index of the routine index to call.
+//* @param [...] The parameters to the called routine.
+//* @reserve The reserve value of the called routine.
+gen_error_t* callv(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) callv, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+    // Store all needed state for constructing call
+    size_t callee = caller[current[0]];
+    size_t* parameters = NULL;
+    size_t parameters_length = current_frame->height - 1;
+    error = gen_memory_allocate_zeroed((void**) &parameters, parameters_length, sizeof(size_t));
+	if(error) return error;
+    size_t parameters_size = parameters_length * sizeof(size_t);
+    error = gen_memory_copy(parameters, parameters_size, &current[1], parameters_size, parameters_size);
+	if(error) return error;
+
+    // Destroy current frame
+    error = cio_vm_pop_frame(vm);
+	if(error) return error;
+
+    // Push parameters into child frame
+    for(size_t i = 0; i < parameters_length; ++i) {
+        error = cio_vm_push(vm);
+    	if(error) return error;
+        caller[caller_frame->height - 1] = parameters[i];
+    }
+    // Orphan parameters
+    caller_frame->height -= parameters_length;
+
+    // Execute routine on child frame
+    error = cio_vm_dispatch_call(vm, callee, parameters_length);
+	if(error) return error;
+
+    // Push an empty frame so `cio_vm_dispatch_call` can correctly restore state
+    error = cio_vm_push_frame(vm);
+	if(error) return error;
+
+    return NULL;
+}
+
+
+//* `rcall*` - Call a routine at a symbol. The `rcall*` call itself is transparent and acts as if the function itself was called except the first parameter.
+//* TODO: Add variadic annotation on invocations of this once implemented .
+//* @param [0] The stack index of a pointer to the start of a buffer containing the symbol name of the routine to call.
+//* @param [...] The parameters to the called routine.
+//* @reserve The reserve value of the called routine.
+gen_error_t* rcall__cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
+	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) rcall__cionom_mangled_grapheme_asterisk, GEN_FILE_NAME);
+	if(error) return error;
+
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+
+	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
+	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
+
+    // Store all needed state for constructing call
+    char* callee = (char*) caller[current[0]];
+    size_t* parameters = NULL;
+    size_t parameters_length = current_frame->height - 1;
+    error = gen_memory_allocate_zeroed((void**) &parameters, parameters_length, sizeof(size_t));
+	if(error) return error;
+    size_t parameters_size = parameters_length * sizeof(size_t);
+    error = gen_memory_copy(parameters, parameters_size, &current[1], parameters_size, parameters_size);
+	if(error) return error;
+
+    // Destroy current frame
+    error = cio_vm_pop_frame(vm);
+	if(error) return error;
+
+    // Push parameters into child frame
+    for(size_t i = 0; i < parameters_length; ++i) {
+        error = cio_vm_push(vm);
+    	if(error) return error;
+        caller[caller_frame->height - 1] = parameters[i];
+    }
+    // Orphan parameters
+    caller_frame->height -= parameters_length;
+
+    // Execute routine on child frame
+    cio_callable_t* callable = NULL;
+    error = cio_vm_get_identifier(vm, callee, &callable, false);
+	if(error) return error;
+    error = cio_vm_dispatch_callable(vm, callable, parameters_length);
+	if(error) return error;
+
+    // Push an empty frame so `cio_vm_dispatch_call` can correctly restore state
+    error = cio_vm_push_frame(vm);
+	if(error) return error;
+
+    return NULL;
 }
 
 CIO_EXTLIB_END_DEFS
