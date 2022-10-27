@@ -122,10 +122,13 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 		error = gen_string_number(source + token->offset, source_length - token->offset, token->length, &routine->parameters);
 		if(error) return error;
 
-		if(!(i < tokens_length) || tokens[i + 1].type != CIO_TOKEN_BLOCK) {
+		if(!(i + 1 < tokens_length) || tokens[i + 1].type == CIO_TOKEN_IDENTIFIER) {
 			routine->external = true;
 			continue;
 		}
+
+        error = cio_parse_internal_expect(&tokens[i + 1], CIO_TOKEN_BLOCK, source, source_length, source_file, source_file_length);
+        if(error) return error;
 
         if(!(i + 2 < tokens_length)) {
             size_t line = 0;
@@ -172,6 +175,13 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
                 return gen_error_attach_backtrace_formatted(GEN_ERROR_BAD_CONTENT, GEN_LINE_NUMBER, "Unexpected EOF in %t:%uz:%uz", source_file, line, column);
             }
             token = &tokens[++i];
+
+            if(i + 1 == tokens_length) {
+                error = cio_parse_internal_expect(token, CIO_TOKEN_BLOCK, source, source_length, source_file, source_file_length);
+    			if(error) return error;
+
+                break;
+            }
 
 			while(token->type == CIO_TOKEN_NUMBER) {
 				error = gen_memory_reallocate_zeroed((void**) &call->parameters, call->parameters_length, call->parameters_length + 1, sizeof(size_t));

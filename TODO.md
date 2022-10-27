@@ -1,13 +1,11 @@
 # TODO
 
-- Rewrite specification
 - Github
-  - Set up code scanning
-  - Set up CI
   - Pages for documentation
   - Start doing semver releases (Fix up a *hecc* tonne of TODOs before doing this!)
     - Place version (+magic?) into bytecode modules so VM can verify version <= runtime version
 - Implementation
+  - Extension: specify libs to look in for extsyms
   - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output
@@ -34,7 +32,6 @@
   - "try-catch" esque. mechanism for catching Genstone errors in Cíonom
     - Update the catch divide-by-zero example
   - Remove all exposed headers
-  - Elide final `0xFF` in a bundled executable
   - Shell completion
   - Expose debug VM as runtime CLI option
   - Add library routine for calling by symbol

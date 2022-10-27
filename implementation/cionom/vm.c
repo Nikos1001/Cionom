@@ -52,7 +52,7 @@ gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
 	return NULL;
 }
 
-gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
+static gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_internal_execute_routine, GEN_FILE_NAME);
 	if(error) return error;
 
