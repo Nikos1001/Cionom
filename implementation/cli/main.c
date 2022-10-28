@@ -611,7 +611,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			if(error) return error;
 
             cio_callable_t* callable = NULL;
-            error = cio_vm_get_identifier(&vm, entry_routine, &callable);
+            error = cio_vm_get_identifier(&vm, entry_routine, &callable, false);
 			if(error) return error;
 
             vm.current_bytecode = callable->bytecode_index;
