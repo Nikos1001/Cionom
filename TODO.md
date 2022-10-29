@@ -3,6 +3,7 @@
 - Github
   - Pages for documentation
   - Start doing semver releases (Fix up a *hecc* tonne of TODOs before doing this!)
+    - Move off upstream into dev branch and add branch protection to trunk
     - Place version (+magic?) into bytecode modules so VM can verify version <= runtime version
 - Implementation
   - Extension: specify libs to look in for extsyms
