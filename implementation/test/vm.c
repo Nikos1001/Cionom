@@ -43,7 +43,7 @@ static gen_error_t* gen_main(void) {
     error = gen_memory_set(&warning_settings, sizeof(warning_settings), true);
 	if(error) return error;
 
-    error = cio_vm_initialize(bytecode, sizeof(bytecode) / sizeof(bytecode[0]), 1024, true, &vm, &warning_settings);
+    error = cio_vm_initialize(bytecode, sizeof(bytecode) / sizeof(bytecode[0]), 1024, true, &vm, false, &warning_settings);
 	if(error) return error;
 
     cio_callable_t* printn_callable = NULL;
@@ -101,7 +101,7 @@ static gen_error_t* gen_main(void) {
     }
 
     {
-        // TODO: Lib redirects in lib-init?
+        // TODO: Lib stdout redirects in lib-init?
 
         error = cio_vm_push_frame(&vm);
         if(error) return error;

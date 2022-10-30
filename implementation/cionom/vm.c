@@ -7,9 +7,7 @@
 #include <genstring.h>
 #include <genlog.h>
 
-#ifndef CIO_VM_DEBUG_PRINTS
-#define CIO_VM_DEBUG_PRINTS GEN_DISABLED
-#endif
+// TODO: Error checking on genlog calls in VM
 
 gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_push_frame, GEN_FILE_NAME);
@@ -72,20 +70,14 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 	const cio_instruction_t* instruction = (const cio_instruction_t*) &vm->bytecode[vm->current_bytecode].bytecode[frame->execution_offset];
 #endif
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Commencing execution in BC %uz @ %uz w/ frame %uz", vm->current_bytecode, frame->execution_offset, vm->frames_used - 1);
-#endif
+    if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Commencing execution in BC %uz @ %uz w/ frame %uz", vm->current_bytecode, frame->execution_offset, vm->frames_used - 1);
 
 	size_t argc = 0;
     bool elide_reserve_space = false;
 	while(!(instruction->opcode == CIO_CALL && instruction->operand == CIO_OPERAND_MAX)) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(const uint8_t*) instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
-#endif
+        if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(const uint8_t*) instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
 		if(instruction->opcode == CIO_CALL) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %uc (argc = %uz (effective argc = %uz), argc[0] = %uz)", instruction->operand, argc, argc - (1 * !elide_reserve_space), vm->stack[frame->base + frame->height - argc]);
-#endif
+            if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "call %uc (argc = %uz (effective argc = %uz), argc[0] = %uz)", instruction->operand, argc, argc - (1 * !elide_reserve_space), vm->stack[frame->base + frame->height - argc]);
 
 			// Callee takes ownership of lower stack items
 			// Subtract 1 for reserve space
@@ -101,20 +93,16 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 			if(error) return error;
 #endif
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Call returned successfully");
-#endif
+            if(vm->debug_prints) gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Call returned successfully");
+
 			argc = 0;
 		}
 		else {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %uc", instruction->operand);
-#endif
+			if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "push %uc", instruction->operand);
 
             if(instruction->operand == CIO_OPERAND_MAX && frame->height) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    			gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Processing extension ID %uc", vm->stack[frame->base + frame->height - 1]);
-#endif
+    			if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Processing extension ID %uc", vm->stack[frame->base + frame->height - 1]);
+
                 switch(vm->stack[frame->base + frame->height - 1]) {
                     case CIO_EXTENSION_ID_ELIDE_RESERVE_SPACE: {
                         // vm->bytecode[vm->current_bytecode].extension_settings.elide_reserve_space
@@ -173,10 +161,10 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
     free(instruction);
 #endif
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(uint8_t*) &instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
-	gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "ret");
-#endif
+    if(vm->debug_prints) {
+        gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Decoding %uc (%uc %uc) in BC %uz @ %uz", *(uint8_t*) &instruction, instruction->opcode, instruction->operand, vm->current_bytecode, frame->execution_offset);
+        gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "ret");
+    }
 
 	return NULL;
 }
@@ -197,9 +185,7 @@ gen_error_t* cio_vm_dispatch_callable(cio_vm_t* const restrict vm, const cio_cal
     size_t old_bytecode = vm->current_bytecode;
     vm->current_bytecode = callable->bytecode_index;
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable_remote_index, (void*) vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
-#endif
+    if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable_remote_index, (void*) vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
 
     if(callable_remote_index >= vm->bytecode[vm->current_bytecode].callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "The index of the callable in remote module was greater than the remote module's callables length");
 
@@ -243,22 +229,17 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
     //       Also allows module-agnostic calls by the native
     //       Application.
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        // TODO: Maybe this should be a warning
-        if(!vm->bytecode_length) gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Executable bundle has no callables");
-#endif
+    // TODO: Maybe this should be a warning
+    if(vm->debug_prints) if(!vm->bytecode_length) gen_log(GEN_LOG_LEVEL_DEBUG, "cionom", "Executable bundle has no callables");
 
     cio_callable_t* extref = NULL;    
 
     for(size_t i = 0; i < vm->bytecode_length; ++i) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
         // TODO: Maybe this should be a warning
-        if(!vm->bytecode[i].callables_length) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode module %uz has no callables", i);
-#endif
+        if(vm->debug_prints) if(!vm->bytecode[i].callables_length) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode module %uz has no callables", i);
+
         for(size_t j = 0; j < vm->bytecode[i].callables_length; ++j) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t` against `%t` from bytecode module %uz routine %uz/%uz...", identifier, vm->bytecode[i].callables[j].identifier, i, j, vm->bytecode[i].callables_length);
-#endif
+            if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t` against `%t` from bytecode module %uz routine %uz/%uz...", identifier, vm->bytecode[i].callables[j].identifier, i, j, vm->bytecode[i].callables_length);
 
             bool equal = false;
             if(vm->bytecode[i].callables[j].identifier_length == len) {
@@ -280,9 +261,8 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
 
     if(!vminit) {
         if(extref) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom", "Resolving identifier %t to purely external callable", identifier);
-#endif
+            if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_WARNING, "cionom", "Resolving identifier %t to purely external callable", identifier);
+
             *out_callable = extref;
             return NULL;
         }
@@ -291,7 +271,7 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
     return gen_error_attach_backtrace_formatted(GEN_ERROR_NO_SUCH_OBJECT, GEN_LINE_NUMBER, "Could not find identifier `%t`", identifier);
 }
 
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, const cio_warning_settings_t* const restrict warning_settings) {
+gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, bool debug_prints, const cio_warning_settings_t* const restrict warning_settings) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_initialize, GEN_FILE_NAME);
 	if(error) return error;
 
@@ -302,6 +282,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 	if(!out_instance) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_instance` was `NULL`");
 
     out_instance->warning_settings = warning_settings;
+    out_instance->debug_prints = debug_prints;
 
 	out_instance->stack_length = stack_length;
 	error = gen_memory_allocate_zeroed((void**) &out_instance->stack, out_instance->stack_length, sizeof(size_t));
@@ -318,10 +299,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     if(error && error->type != GEN_ERROR_NO_SUCH_OBJECT) return error;
 
     for(size_t i = 0; i < bytecode_length; ++i) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Began decoding bytecode module %uz at offset %p in bundle", out_instance->bytecode_length, i);
-            if(error) return error;
-#endif
+        if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Began decoding bytecode module %uz at offset %p in bundle", out_instance->bytecode_length, i);
 
         error = gen_memory_reallocate_zeroed((void**) &out_instance->bytecode, out_instance->bytecode_length, out_instance->bytecode_length + 1, sizeof(cio_bytecode_t));
         if(error) return error;
@@ -332,10 +310,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
         size_t offset = 1;
         if(bytecode[i] & 0b10000000) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Module %uz contains extension data", out_instance->bytecode_length);
-            if(error) return error;
-#endif
+            if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Module %uz contains extension data", out_instance->bytecode_length);
+
             ++offset;
 
             do {
@@ -409,10 +385,7 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 
             module->callables[j] = (cio_callable_t) {entry->name, stride, cio_vm_internal_execute_routine, out_instance->bytecode_length, entry->offset, j};
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-            error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Appended routine table entry for %t routine `%tz` in bytecode module %uz at index %uz/%uz", entry->offset == CIO_ROUTINE_EXTERNAL ? "external" : "internal", entry->name, stride, out_instance->bytecode_length, j, module->callables_length);
-            if(error) return error;
-#endif
+            if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Appended routine table entry for %t routine `%tz` in bytecode module %uz at index %uz/%uz", entry->offset == CIO_ROUTINE_EXTERNAL ? "external" : "internal", entry->name, stride, out_instance->bytecode_length, j, module->callables_length);
 
             offset += sizeof(entry->offset) + stride + 1;
 #ifdef __ANALYZER
@@ -420,10 +393,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
 #endif
         }
 
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Set bytecode module %uz code block at offset %p in bundle", out_instance->bytecode_length, offset + i);
-        if(error) return error;
-#endif
+        if(out_instance->debug_prints)  gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Set bytecode module %uz code block at offset %p in bundle", out_instance->bytecode_length, offset + i);
+
         size_t code_block_offset = i + offset;
         module->bytecode = &bytecode[i + offset];
 
@@ -435,10 +406,8 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
         for(; bytecode[i] != 0xFF; ++i);
 
         module->size = (i - code_block_offset) + 1;
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-        error = gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode code block size %uz", module->size);
-        if(error) return error;
-#endif
+
+        if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Bytecode code block size %uz", module->size);
 
         ++out_instance->bytecode_length;
     }
@@ -453,15 +422,13 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
                 cio_callable_t dummy = {0};
                 callable = &dummy;
 #endif
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t`...", out_instance->bytecode[i].callables[j].identifier);
-#endif
+
+                if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Trying to resolve `%t`...", out_instance->bytecode[i].callables[j].identifier);
 
                 error = cio_vm_get_identifier(out_instance, out_instance->bytecode[i].callables[j].identifier, &callable, true);
                 if(error && error->type == GEN_ERROR_NO_SUCH_OBJECT) {
-#if CIO_VM_DEBUG_PRINTS == GEN_ENABLED
-                    gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving `%t` in external code", out_instance->bytecode[i].callables[j].identifier);
-#endif
+                    if(out_instance->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Resolving `%t` in external code", out_instance->bytecode[i].callables[j].identifier);
+
                     error = cio_resolve_external(out_instance->bytecode[i].callables[j].identifier, &out_instance->bytecode[i].callables[j].function, &out_instance->external_lib);
                     if(error) return error;
     

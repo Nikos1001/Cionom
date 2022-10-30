@@ -337,6 +337,8 @@ typedef struct cio_vm_t {
      */
     void* external_lib_storage;
 
+    bool debug_prints;
+
     const cio_warning_settings_t* warning_settings;
 } cio_vm_t;
 
@@ -501,7 +503,7 @@ extern gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const cha
  * @param[out] out_instance a pointer to storage for the created VM.
  * @return An error, otherwise `NULL`.
  */
-extern gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, const cio_warning_settings_t* const restrict warning_settings);
+extern gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, bool debug_prints, const cio_warning_settings_t* const restrict warning_settings);
 
 /**
  * Destroys a VM.

@@ -28,6 +28,7 @@
   - Document debug info format
   - String hashing in VM
   - Update Esolang wiki
+  - Add generalized genstone backends system
   - Fix inconsistencies in naming between "length" and "bounds"
   - Do checks for CLI params with no effect/raw args to operations which ignore them
   - Do parameter checking on `warning_settings` and document it as a parameter
@@ -36,5 +37,3 @@
     - Update the catch divide-by-zero example
   - Remove all exposed headers
   - Shell completion
-  - Expose debug VM as runtime CLI option
-  - Add library routine for calling by symbol

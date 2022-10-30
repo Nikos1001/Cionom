@@ -586,11 +586,11 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BUNDLE_FILE_FALLBACK;
 
             if(stack_length == SIZE_MAX && warn_implicit_switch) {
-                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
 
                 if(warning_settings.fatal_warnings) {
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 }
 
             }
@@ -602,7 +602,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, &warning_settings);
+			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, false /* TODO: `--debug` */, &warning_settings);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
@@ -670,7 +670,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
             cio_vm_t vm = {0};
-            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm, &warning_settings);
+            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm, false, &warning_settings);
             if(error) return error;
 
             if(vm.bytecode_length != 1) {

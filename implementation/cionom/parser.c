@@ -76,7 +76,7 @@ gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t to
 
             if(!entry_point) {
                 bool contains = false;
-                error = gen_string_contains(routine->identifier, GEN_STRING_NO_BOUNDS, "__cionom", sizeof("__cionom"), GEN_STRING_NO_BOUNDS, &contains);
+                error = gen_string_contains(routine->identifier, GEN_STRING_NO_BOUNDS, "__cionom", sizeof("__cionom"), GEN_STRING_NO_BOUNDS, &contains, NULL);
                 if(error) return error;
 
                 if(contains) {

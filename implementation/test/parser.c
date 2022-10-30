@@ -77,16 +77,6 @@ static gen_error_t* gen_main(void) {
         error = gen_memory_compare(program_expected.routines[0].token, sizeof(cio_token_t), program.routines[0].token, sizeof(cio_token_t), sizeof(cio_token_t), &equal);
         if(error) return error;
 
-        // TODO: This is needed for some reason
-        gen_string_format(GEN_STRING_NO_BOUNDS, NULL, NULL, "%ui %uz %uz ?= %ui %uz %uz", sizeof("%ui %uz %uz ?= %ui %uz %uz") - 1,
-            program_expected.routines[0].token->type,
-            program_expected.routines[0].token->offset,
-            program_expected.routines[0].token->length,
-            program.routines[0].token->type,
-            program.routines[0].token->offset,
-            program.routines[0].token->length
-        );
-
         error = GEN_TESTS_EXPECT(true, equal);
         if(error) return error;
     }

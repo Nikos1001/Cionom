@@ -48,8 +48,6 @@ static void cio_module_internal_emit_cleanup_bytecode(unsigned char** bytecode) 
     }
 }
 
-// TODO: `cio_routine_table_entry_t` and `cio_instruction_t` as output types (split) for `cio_module_emit`.
-
 gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_module_emit, GEN_FILE_NAME);
 	if(error) return error;
@@ -61,10 +59,10 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
 	if(!source_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source_file` was `NULL`");
 
     if(program->routines_length >= CIO_ROUTINE_EXTERNAL) {
-        error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
+        error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, (size_t) CIO_ROUTINE_EXTERNAL - 1, source_file);
         if(error) return error;
 
-        return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, CIO_ROUTINE_EXTERNAL - 1, source_file);
+        return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "%uz routines exceeds maximum of %uz allowed by bytecode format in %t", program->routines_length, (size_t) CIO_ROUTINE_EXTERNAL - 1, source_file);
     }
 
 	GEN_CLEANUP_FUNCTION(cio_module_internal_emit_cleanup_offsets) uint32_t* offsets = NULL;
@@ -218,10 +216,10 @@ gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsign
         //       we can just continue codegen past this point creating
         //       unaddressable routines.
 		if(code_size >= CIO_ROUTINE_EXTERNAL) {
-            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
+            error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom", "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, (size_t) CIO_ROUTINE_EXTERNAL, source_file);
             if(error) return error;
 
-            return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, CIO_ROUTINE_EXTERNAL, source_file);
+            return gen_error_attach_backtrace_formatted(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "Emitted code section size %uz exceeds maximum of %uz allowed by bytecode format in %t", code_size, (size_t) CIO_ROUTINE_EXTERNAL, source_file);
         }
 	}
 
