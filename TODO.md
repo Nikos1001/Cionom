@@ -28,6 +28,7 @@
   - Document debug info format
   - String hashing in VM
   - Update Esolang wiki
+  - Fix inconsistencies in naming between "length" and "bounds"
   - Do checks for CLI params with no effect/raw args to operations which ignore them
   - Do parameter checking on `warning_settings` and document it as a parameter
   - Review buffer bounding negligence (e.g. ignoring `source_file_length`)
