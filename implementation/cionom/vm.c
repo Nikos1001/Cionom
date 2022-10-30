@@ -31,6 +31,10 @@ gen_error_t* cio_vm_pop_frame(cio_vm_t* const restrict vm) {
 	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
 
 	if(!vm->frames_used) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Attemping to pop when no stack frames are active");
+
+    vm->frames[vm->frames_used - 1].base = 0;
+    vm->frames[vm->frames_used - 1].height = 0;
+    vm->frames[vm->frames_used - 1].execution_offset = 0;
 	--vm->frames_used;
 
 	return NULL;
@@ -52,7 +56,10 @@ gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
 	return NULL;
 }
 
-static gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
+// We keep this externally resolvable to let
+// The tests check against it's function pointer.
+extern gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
+gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_vm_internal_execute_routine, GEN_FILE_NAME);
 	if(error) return error;
 

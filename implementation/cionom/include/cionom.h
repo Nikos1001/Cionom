@@ -562,11 +562,5 @@ extern gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const si
  * @return An error, otherwise `NULL`.
  */
 extern gen_error_t* cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer);
-/**
- * Dumps the stack state of a VM for diagnostic purposes.
- * @param[in] vm the VM whose stack should be dumped.
- * @return An error, otherwise `NULL`.
- */
-extern gen_error_t* cio_vm_dump_stack(const cio_vm_t* const restrict vm);
 
 #endif

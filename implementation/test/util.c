@@ -7,6 +7,11 @@
 
 extern gen_error_t* copy__cionom_mangled_grapheme_equals(cio_vm_t* const restrict vm);
 
+GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_BEGIN)
+GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_IGNORE("-Weverything"))
+#include <dlfcn.h>
+GEN_PRAGMA(GEN_PRAGMA_DIAGNOSTIC_REGION_END)
+
 static gen_error_t* gen_main(void) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
 	if(error) return error;
@@ -51,6 +56,9 @@ static gen_error_t* gen_main(void) {
         if(error) return error;
 
         error = GEN_TESTS_EXPECT((void*) copy__cionom_mangled_grapheme_equals, (void*) proc);
+        if(error) return error;
+
+        error = gen_dynamic_library_handle_close(handle);
         if(error) return error;
     }
 
