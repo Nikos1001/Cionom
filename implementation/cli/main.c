@@ -60,13 +60,13 @@ typedef enum {
     CIO_CLI_SWITCH_DEBUG_VM
 } cio_cli_switch_t;
 
-static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, size_t* out_size) {
+static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, gen_size_t* out_size) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_cli_read_file, GEN_FILE_NAME);
     if(error) return error;
 
-    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `NULL`");
-    if(!out_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_file` was `NULL`");
-    if(!out_size) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_size` was `NULL`");
+    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `GEN_NULL`");
+    if(!out_file) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_file` was `GEN_NULL`");
+    if(!out_size) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_size` was `GEN_NULL`");
     
     gen_filesystem_handle_t handle = {0};
     error = gen_filesystem_handle_open(path, GEN_STRING_NO_BOUNDS, &handle);
@@ -90,17 +90,17 @@ static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file
     error = gen_filesystem_handle_close(&handle);
     if(error) return error;
 
-    return NULL;
+    return GEN_NULL;
 }
 
-static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned char* buffer, size_t size) {
+static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned char* buffer, gen_size_t size) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_cli_read_file, GEN_FILE_NAME);
     if(error) return error;
 
-    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `NULL`");
-    if(!buffer) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`buffer` was `NULL`");
+    if(!path) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`path` was `GEN_NULL`");
+    if(!buffer) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`buffer` was `GEN_NULL`");
     
-    bool exists = false;
+    gen_bool_t exists = gen_false;
     error = gen_filesystem_path_exists(path, GEN_STRING_NO_BOUNDS, &exists);
     if(error) return error;
 
@@ -132,12 +132,12 @@ static gen_error_t* cio_cli_recreate_write_file(const char* path, const unsigned
     error = gen_filesystem_handle_close(&handle);
     if(error) return error;
 
-    return NULL;
+    return GEN_NULL;
 }
 
 // TODO: Separate out main
 
-static gen_error_t* gen_main(const size_t argc, const char* const restrict* const restrict argv) {
+static gen_error_t* gen_main(const gen_size_t argc, const char* const restrict* const restrict argv) {
     GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) gen_main, GEN_FILE_NAME);
     if(error) return error;
 
@@ -178,11 +178,11 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No parameters specified");
     }
 
-    size_t* argument_lengths = NULL;
-    error = gen_memory_allocate_zeroed((void**) &argument_lengths, argc - 1, sizeof(size_t));
+    gen_size_t* argument_lengths = GEN_NULL;
+    error = gen_memory_allocate_zeroed((void**) &argument_lengths, argc - 1, sizeof(gen_size_t));
 	if(error) return error;
 
-    for(size_t i = 0; i < argc - 1; ++i) {
+    for(gen_size_t i = 0; i < argc - 1; ++i) {
         error = gen_string_length((argv + 1)[i], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &argument_lengths[i]);
     	if(error) return error;
     }
@@ -202,7 +202,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_DEBUG_VM] = "debug-vm"
     };
 
-    static const size_t switches_lengths[] = {
+    static const gen_size_t switches_lengths[] = {
         [CIO_CLI_SWITCH_EMIT_BYTECODE] = sizeof("emit-bytecode") - 1,
         [CIO_CLI_SWITCH_EXECUTE_BUNDLE] = sizeof("execute-bundle") - 1,
         [CIO_CLI_SWITCH_MANGLE_IDENTIFIER] = sizeof("mangle-identifier") - 1,
@@ -218,22 +218,22 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     };
 
     gen_arguments_parsed_t parsed = {0};
-    error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
+    error = gen_arguments_parse(argv + 1, argument_lengths, argc - 1, GEN_NULL, 0, switches, switches_lengths, sizeof(switches) / sizeof(char*), &parsed);
 	if(error) return error;
 
-    size_t stack_length = SIZE_MAX;
-    const char* entry_routine = NULL;
-    const char* file = NULL;
+    gen_size_t stack_length = GEN_SIZE_MAX;
+    const char* entry_routine = GEN_NULL;
+    const char* file = GEN_NULL;
 
-    bool warn_implicit_switch = false;
-    bool warn_implicit_switch_parameter = false;
-    bool warn_implicit_file = false;
+    gen_bool_t warn_implicit_switch = gen_false;
+    gen_bool_t warn_implicit_switch_parameter = gen_false;
+    gen_bool_t warn_implicit_file = gen_false;
     cio_warning_settings_t warning_settings = {0};
-    bool debug_vm = false;
+    gen_bool_t debug_vm = gen_false;
 
     cio_cli_operation_t operation = CIO_CLI_OPERATION_NONE;
 
-    for(size_t i = 0; i < parsed.long_argument_count; ++i) {
+    for(gen_size_t i = 0; i < parsed.long_argument_count; ++i) {
         // We need to parse this out first to enable diagnostics in other switches
         if(parsed.long_argument_indices[i] == CIO_CLI_SWITCH_FATAL_WARNINGS) {
             if(parsed.long_argument_parameters[i]) {
@@ -249,7 +249,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
             }
 
-            warning_settings.fatal_warnings = true;
+            warning_settings.fatal_warnings = gen_true;
         }
         else if(parsed.long_argument_indices[i] == CIO_CLI_SWITCH_WARNING) {
             if(!parsed.long_argument_parameters[i]) {
@@ -261,17 +261,17 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             // TODO: Move this out into a more managable structure
 
-            bool equal = false;
+            gen_bool_t equal = gen_false;
             error = gen_string_compare("all", sizeof("all"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal) {
-                bool fatal_warnings = warning_settings.fatal_warnings;
+                gen_bool_t fatal_warnings = warning_settings.fatal_warnings;
 
-                error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), true);
+                error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), gen_true);
                 if(error) return error;
-                warn_implicit_switch_parameter = true;
-                warn_implicit_switch = true;
-                warn_implicit_file = true;
+                warn_implicit_switch_parameter = gen_true;
+                warn_implicit_switch = gen_true;
+                warn_implicit_file = gen_true;
                 
                 warning_settings.fatal_warnings = fatal_warnings;
 
@@ -282,21 +282,21 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
             if(equal && warn_implicit_switch_parameter) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_switch_parameter` specified multiple times");
             if(equal) {
-                warn_implicit_switch_parameter = true;
+                warn_implicit_switch_parameter = gen_true;
                 continue;
             }
             error = gen_string_compare("implicit_switch", sizeof("implicit_switch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warn_implicit_switch) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_switch` specified multiple times");
             if(equal) {
-                warn_implicit_switch = true;
+                warn_implicit_switch = gen_true;
                 continue;
             }
             error = gen_string_compare("implicit_file", sizeof("implicit_file"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warn_implicit_file) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_file` specified multiple times");
             if(equal) {
-                warn_implicit_file = true;
+                warn_implicit_file = gen_true;
                 continue;
             }
 
@@ -304,41 +304,41 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
             if(equal && warning_settings.emit_reserved_encoding) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=emit_reserved_encoding` specified multiple times");
             if(equal) {
-                warning_settings.emit_reserved_encoding = true;
+                warning_settings.emit_reserved_encoding = gen_true;
                 continue;
             }
             error = gen_string_compare("reserved_identifier", sizeof("reserved_identifier"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warning_settings.reserved_identifier) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=reserved_identifier` specified multiple times");
             if(equal) {
-                warning_settings.reserved_identifier = true;
+                warning_settings.reserved_identifier = gen_true;
                 continue;
             }
             error = gen_string_compare("parameter_overflow", sizeof("parameter_overflow"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warning_settings.parameter_overflow) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=parameter_overflow` specified multiple times");
             if(equal) {
-                warning_settings.parameter_overflow = true;
+                warning_settings.parameter_overflow = gen_true;
                 continue;
             }
             error = gen_string_compare("parameter_count_mismatch", sizeof("parameter_count_mismatch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warning_settings.parameter_count_mismatch) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=parameter_count_mismatch` specified multiple times");
             if(equal) {
-                warning_settings.parameter_count_mismatch = true;
+                warning_settings.parameter_count_mismatch = gen_true;
                 continue;
             }
             error = gen_string_compare("consume_reserved_encoding", sizeof("consume_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
             if(equal && warning_settings.consume_reserved_encoding) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=consume_reserved_encoding` specified multiple times");
             if(equal) {
-                warning_settings.consume_reserved_encoding = true;
+                warning_settings.consume_reserved_encoding = gen_true;
                 continue;
             }
         }
     }
 
-    for(size_t i = 0; i < parsed.long_argument_count; ++i) {
+    for(gen_size_t i = 0; i < parsed.long_argument_count; ++i) {
         switch(parsed.long_argument_indices[i]) {
             case CIO_CLI_SWITCH_EMIT_BYTECODE: {
                 if(operation) {
@@ -415,7 +415,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                     return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
                 }
-                if(stack_length != SIZE_MAX) {
+                if(stack_length != GEN_SIZE_MAX) {
                     error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` specified multiple times", switches[parsed.long_argument_indices[i]]);
                     if(error) return error;
 
@@ -550,7 +550,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                     return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
                 }
 
-                debug_vm = true;
+                debug_vm = gen_true;
 
                 break;
             }
@@ -582,17 +582,17 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             const char* source_file = (argv + 1)[parsed.raw_argument_indices[0]];
 
-            size_t filename_length = 0;
+            gen_size_t filename_length = 0;
             error = gen_string_length(source_file, GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &filename_length);
             if(error) return error;
 
-            size_t source_length = 0;
-            char* source = NULL;
+            gen_size_t source_length = 0;
+            char* source = GEN_NULL;
             error = cio_cli_read_file(source_file, (unsigned char**) &source, &source_length);
             if(error) return error;
 
-			cio_token_t* tokens = NULL;
-			size_t tokens_length = 0;
+			cio_token_t* tokens = GEN_NULL;
+			gen_size_t tokens_length = 0;
 			error = cio_tokenize(source, source_length, &tokens, &tokens_length);
 			if(error) return error;
 
@@ -600,8 +600,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			error = cio_parse(tokens, tokens_length, &program, source, source_length, source_file, filename_length, &warning_settings);
 			if(error) return error;
 
-			unsigned char* bytecode = NULL;
-			size_t bytecode_length = 0;
+			unsigned char* bytecode = GEN_NULL;
+			gen_size_t bytecode_length = 0;
 			error = cio_module_emit(&program, &bytecode, &bytecode_length, source, source_length, source_file, filename_length, &warning_settings);
 			if(error) return error;
 
@@ -618,7 +618,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
             }
 
-            const char* bytecode_file = NULL;
+            const char* bytecode_file = GEN_NULL;
 
             if(!parsed.raw_argument_count && warn_implicit_file) {
                 error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "Bytecode bundle not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BUNDLE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
@@ -631,24 +631,24 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BUNDLE_FILE_FALLBACK;
 
-            if(stack_length == SIZE_MAX && warn_implicit_switch) {
-                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+            if(stack_length == GEN_SIZE_MAX && warn_implicit_switch) {
+                error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (gen_size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 if(error) return error;
 
                 if(warning_settings.fatal_warnings) {
-                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` not specified, defaulting to %uz [%twarn_implicit_switch]", switches[CIO_CLI_SWITCH_STACK_LENGTH], (gen_size_t) CIO_CLI_STACK_LENGTH_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
                 }
 
             }
-            stack_length = stack_length != SIZE_MAX ? stack_length : CIO_CLI_STACK_LENGTH_FALLBACK;
+            stack_length = stack_length != GEN_SIZE_MAX ? stack_length : CIO_CLI_STACK_LENGTH_FALLBACK;
 
-            size_t bytecode_length = 0;
-            unsigned char* bytecode = NULL;
+            gen_size_t bytecode_length = 0;
+            unsigned char* bytecode = GEN_NULL;
             error = cio_cli_read_file(bytecode_file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, debug_vm, &warning_settings);
+			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, gen_true, &vm, debug_vm, &warning_settings);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
@@ -656,8 +656,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 			error = cio_vm_push(&vm);
 			if(error) return error;
 
-            cio_callable_t* callable = NULL;
-            error = cio_vm_get_identifier(&vm, entry_routine, &callable, false);
+            cio_callable_t* callable = GEN_NULL;
+            error = cio_vm_get_identifier(&vm, entry_routine, &callable, gen_false);
 			if(error) return error;
 
             vm.current_bytecode = callable->bytecode_index;
@@ -680,7 +680,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple identifiers specified");
             }
 
-            char* mangled = NULL;
+            char* mangled = GEN_NULL;
             error = cio_mangle_identifier((argv + 1)[parsed.raw_argument_indices[0]], &mangled);
             if(error) return error;
 
@@ -697,7 +697,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Multiple files specified");
             }
 
-            const char* bytecode_file = NULL;
+            const char* bytecode_file = GEN_NULL;
 
             if(!parsed.raw_argument_count && warn_implicit_file) {
                 error = gen_log_formatted(warning_settings.fatal_warnings ? GEN_LOG_LEVEL_FATAL : GEN_LOG_LEVEL_WARNING, "cionom-cli", "File not specified, defaulting to `%t` [%twarn_implicit_file]", CIO_CLI_BYTECODE_FILE_FALLBACK, warning_settings.fatal_warnings ? "fatal_warnings, " : "");
@@ -710,13 +710,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             bytecode_file = parsed.raw_argument_count ? (argv + 1)[parsed.raw_argument_indices[0]] : CIO_CLI_BYTECODE_FILE_FALLBACK;
 
-            size_t bytecode_length = 0;
-            unsigned char* bytecode = NULL;
+            gen_size_t bytecode_length = 0;
+            unsigned char* bytecode = GEN_NULL;
             error = cio_cli_read_file(bytecode_file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
             cio_vm_t vm = {0};
-            error = cio_vm_initialize(bytecode, bytecode_length, 1, false, &vm, false, &warning_settings);
+            error = cio_vm_initialize(bytecode, bytecode_length, 1, gen_false, &vm, gen_false, &warning_settings);
             if(error) return error;
 
             if(vm.bytecode_length != 1) {
@@ -728,15 +728,15 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
             cio_bytecode_t* bytecode_meta = &vm.bytecode[0];
 
-            char* cas_file = NULL;
-            size_t cas_file_size = 0;
+            char* cas_file = GEN_NULL;
+            gen_size_t cas_file_size = 0;
 
-            for(size_t i = 0; i < bytecode_meta->callables_length; ++i) {
+            for(gen_size_t i = 0; i < bytecode_meta->callables_length; ++i) {
                 if(bytecode_meta->callables[i].offset == CIO_ROUTINE_EXTERNAL) {
                     error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[i].identifier_length + 9, sizeof(char));
                     if(error) return error;
                     
-                    error = gen_string_format(bytecode_meta->callables[i].identifier_length + 9, &cas_file[cas_file_size], NULL, ":import %tz\n", sizeof(":import %tz\n") - 1, bytecode_meta->callables[i].identifier, bytecode_meta->callables[i].identifier_length);
+                    error = gen_string_format(bytecode_meta->callables[i].identifier_length + 9, &cas_file[cas_file_size], GEN_NULL, ":import %tz\n", sizeof(":import %tz\n") - 1, bytecode_meta->callables[i].identifier, bytecode_meta->callables[i].identifier_length);
                     if(error) return error;
                     
                     cas_file_size += bytecode_meta->callables[i].identifier_length + 9;
@@ -752,13 +752,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 cas_file_size++;
             }
 
-            for(size_t i = 0; i < bytecode_meta->size; ++i) {
-                for(size_t j = 0; j < bytecode_meta->callables_length; ++j) {
+            for(gen_size_t i = 0; i < bytecode_meta->size; ++i) {
+                for(gen_size_t j = 0; j < bytecode_meta->callables_length; ++j) {
                     if(i == bytecode_meta->callables[j].offset) {
                         error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[j].identifier_length + 2, sizeof(char));
                         if(error) return error;
                         
-                        error = gen_string_format(bytecode_meta->callables[j].identifier_length + 2, &cas_file[cas_file_size], NULL, "%tz:\n", sizeof("%tz:\n") - 1, bytecode_meta->callables[j].identifier, bytecode_meta->callables[j].identifier_length);
+                        error = gen_string_format(bytecode_meta->callables[j].identifier_length + 2, &cas_file[cas_file_size], GEN_NULL, "%tz:\n", sizeof("%tz:\n") - 1, bytecode_meta->callables[j].identifier, bytecode_meta->callables[j].identifier_length);
                         if(error) return error;
                         
                         cas_file_size += bytecode_meta->callables[j].identifier_length + 2;
@@ -773,14 +773,14 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 switch(instruction.opcode) {
                     case CIO_PUSH: {
-                        size_t format_len = 0;
-                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
+                        gen_size_t format_len = 0;
+                        error = gen_string_format(GEN_STRING_NO_BOUNDS, GEN_NULL, &format_len, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
                         if(error) return error;
                         
                         error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + format_len, sizeof(char));
                         if(error) return error;
 
-                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
+                        error = gen_string_format(format_len, &cas_file[cas_file_size], GEN_NULL, "\tpush %uc\n", sizeof("\tpush %uc\n") - 1, instruction.operand);
                         if(error) return error;
 
                         cas_file_size += format_len;
@@ -798,14 +798,14 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                             break;
                         }
 
-                        size_t format_len = 0;
-                        error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &format_len, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
+                        gen_size_t format_len = 0;
+                        error = gen_string_format(GEN_STRING_NO_BOUNDS, GEN_NULL, &format_len, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
                         if(error) return error;
                         
                         error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + format_len, sizeof(char));
                         if(error) return error;
 
-                        error = gen_string_format(format_len, &cas_file[cas_file_size], NULL, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
+                        error = gen_string_format(format_len, &cas_file[cas_file_size], GEN_NULL, "\tcall %t\n", sizeof("\tcall %t\n") - 1, bytecode_meta->callables[instruction.operand].identifier);
                         if(error) return error;
 
                         cas_file_size += format_len;
@@ -830,12 +830,12 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "No bytecode files specified");
             }
 
-            unsigned char* buffer = NULL;
-            size_t buffer_size = 0;
+            unsigned char* buffer = GEN_NULL;
+            gen_size_t buffer_size = 0;
 
-            for(size_t i = 0; i < parsed.raw_argument_count; ++i) {
-                size_t bytecode_length = 0;
-                unsigned char* bytecode = NULL;
+            for(gen_size_t i = 0; i < parsed.raw_argument_count; ++i) {
+                gen_size_t bytecode_length = 0;
+                unsigned char* bytecode = GEN_NULL;
                 error = cio_cli_read_file((argv + 1)[parsed.raw_argument_indices[i]], (unsigned char**) &bytecode, &bytecode_length);
                 if(error) return error;
 
@@ -857,31 +857,31 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             break;
         }
         case CIO_CLI_OPERATION_DEBUNDLE: {
-            size_t bytecode_length = 0;
-            unsigned char* bytecode = NULL;
+            gen_size_t bytecode_length = 0;
+            unsigned char* bytecode = GEN_NULL;
             error = cio_cli_read_file(file, (unsigned char**) &bytecode, &bytecode_length);
             if(error) return error;
 
             // TODO: Use debug info for filenames
             // TODO: Verify that modules are actually modules
 
-            size_t bytecode_count = 0;
+            gen_size_t bytecode_count = 0;
 
-            for(size_t i = 0; i < bytecode_length; ++i) {
-                size_t begin = i;
-                size_t callables_length = bytecode[i];
+            for(gen_size_t i = 0; i < bytecode_length; ++i) {
+                gen_size_t begin = i;
+                gen_size_t callables_length = bytecode[i];
 
-                size_t offset = 1;
-                uint32_t last_routine = 0;
-                for(size_t j = 0; j < callables_length; ++j) {
+                gen_size_t offset = 1;
+                gen_uint32_t last_routine = 0;
+                for(gen_size_t j = 0; j < callables_length; ++j) {
                     // This avoids alignment shenanigans
                     // Doesn't really matter but ASan has a hissy fit
-                    error = gen_memory_copy(&last_routine, sizeof(uint32_t), &bytecode[i + offset], bytecode_length - (i + offset), sizeof(uint32_t));
+                    error = gen_memory_copy(&last_routine, sizeof(gen_uint32_t), &bytecode[i + offset], bytecode_length - (i + offset), sizeof(gen_uint32_t));
                     if(error) return error;
 
                     offset += 4;
 
-                    size_t stride = 0;
+                    gen_size_t stride = 0;
                     error = gen_string_length((const char*) &bytecode[i + offset], GEN_STRING_NO_BOUNDS, GEN_STRING_NO_BOUNDS, &stride);
                     if(error) return error;
 
@@ -890,13 +890,13 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
                 for(i += offset + last_routine; bytecode[i] != 0xFF; ++i);
 
-                size_t module_length = 0;
-                error = gen_string_format(GEN_STRING_NO_BOUNDS, NULL, &module_length, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
+                gen_size_t module_length = 0;
+                error = gen_string_format(GEN_STRING_NO_BOUNDS, GEN_NULL, &module_length, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
                 if(error) return error;
-                char* module = NULL;
+                char* module = GEN_NULL;
                 error = gen_memory_allocate_zeroed((void**) &module, module_length + 1, sizeof(char));
                 if(error) return error;
-                error = gen_string_format(module_length, module, NULL, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
+                error = gen_string_format(module_length, module, GEN_NULL, "%uz.ibc", sizeof("%uz.ibc") - 1, bytecode_count);
                 if(error) return error;
 
                 error = cio_cli_recreate_write_file(module, &bytecode[begin], (i - begin) + 1);
@@ -916,8 +916,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         }
 
         case CIO_CLI_OPERATION_HELP: {
-            const size_t option_pad = 35;
-            const size_t suboption_pad = 30;
+            const gen_size_t option_pad = 35;
+            const gen_size_t suboption_pad = 30;
 
             error = gen_log_formatted(GEN_LOG_LEVEL_INFO, "cionom-cli", "USAGE: %t [OPTIONS...] [ARGUMENTS...]\n", argv[0]);
             if(error) return error;
@@ -969,7 +969,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         }
     }
 
-    return NULL;
+    return GEN_NULL;
 }
 
 int main(const int argc, const char* const* const argv) {
@@ -979,7 +979,7 @@ int main(const int argc, const char* const* const argv) {
         gen_error_abort();
     }
 
-    error = gen_main((size_t) argc, argv);
+    error = gen_main((gen_size_t) argc, argv);
     if(error) {
 #if GEN_BUILD_MODE == GEN_DEBUG
         gen_error_print("cionom-cli", error, GEN_ERROR_SEVERITY_FATAL);

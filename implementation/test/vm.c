@@ -40,18 +40,18 @@ static gen_error_t* gen_main(void) {
 
     cio_vm_t vm = {0};
     cio_warning_settings_t warning_settings = {0};
-    error = gen_memory_set(&warning_settings, sizeof(warning_settings), true);
+    error = gen_memory_set(&warning_settings, sizeof(warning_settings), gen_true);
 	if(error) return error;
 
-    error = cio_vm_initialize(bytecode, sizeof(bytecode) / sizeof(bytecode[0]), 1024, true, &vm, false, &warning_settings);
+    error = cio_vm_initialize(bytecode, sizeof(bytecode) / sizeof(bytecode[0]), 1024, gen_true, &vm, gen_false, &warning_settings);
 	if(error) return error;
 
-    cio_callable_t* printn_callable = NULL;
+    cio_callable_t* printn_callable = GEN_NULL;
     {
-        error = cio_vm_get_identifier(&vm, "printn", &printn_callable, false);
+        error = cio_vm_get_identifier(&vm, "printn", &printn_callable, gen_false);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(false, printn_callable == NULL);
+        error = GEN_TESTS_EXPECT(gen_false, printn_callable == GEN_NULL);
         if(error) return error;
 
         error = GEN_TESTS_EXPECT("printn", printn_callable->identifier);
@@ -74,11 +74,11 @@ static gen_error_t* gen_main(void) {
     }
 
     {
-        cio_callable_t* callable = NULL;
-        error = cio_vm_get_identifier(&vm, "__cionom_entrypoint", &callable, false);
+        cio_callable_t* callable = GEN_NULL;
+        error = cio_vm_get_identifier(&vm, "__cionom_entrypoint", &callable, gen_false);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(false, callable == NULL);
+        error = GEN_TESTS_EXPECT(gen_false, callable == GEN_NULL);
         if(error) return error;
 
         error = GEN_TESTS_EXPECT("__cionom_entrypoint", callable->identifier);
@@ -129,7 +129,7 @@ static gen_error_t* gen_main(void) {
         error = cio_vm_get_frame(&vm, 0, &frame);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(false, frame == NULL);
+        error = GEN_TESTS_EXPECT(gen_false, frame == GEN_NULL);
         if(error) return error;
 
         error = GEN_TESTS_EXPECT(0, frame->base);
@@ -139,11 +139,11 @@ static gen_error_t* gen_main(void) {
         error = GEN_TESTS_EXPECT(0, frame->execution_offset);
         if(error) return error;
 
-        size_t* ptr = NULL;
+        gen_size_t* ptr = GEN_NULL;
         error = cio_vm_get_frame_pointer(&vm, frame, &ptr);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(false, ptr == NULL);
+        error = GEN_TESTS_EXPECT(gen_false, ptr == GEN_NULL);
         if(error) return error;
 
         error = GEN_TESTS_EXPECT((void*) vm.stack, ptr);
@@ -156,5 +156,5 @@ static gen_error_t* gen_main(void) {
     error = cio_vm_free(&vm);
     if(error) return error;
 
-    return NULL;
+    return GEN_NULL;
 }

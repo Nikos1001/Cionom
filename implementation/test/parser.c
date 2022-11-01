@@ -31,7 +31,7 @@ static gen_error_t* gen_main(void) {
 
     cio_program_t program = {0};
     cio_warning_settings_t warning_settings = {0};
-    error = gen_memory_set(&warning_settings, sizeof(warning_settings), true);
+    error = gen_memory_set(&warning_settings, sizeof(warning_settings), gen_true);
     if(error) return error;
 
     error = cio_parse(tokens, sizeof(tokens) / sizeof(tokens[0]), &program, source, sizeof(source) - 1, "", 0, &warning_settings);
@@ -41,14 +41,14 @@ static gen_error_t* gen_main(void) {
         2,
         (cio_routine_t[]) {
             {
-                "foo", 0, 0, NULL, true, &(cio_token_t){CIO_TOKEN_IDENTIFIER, 0, 3}
+                "foo", 0, 0, GEN_NULL, gen_true, &(cio_token_t){CIO_TOKEN_IDENTIFIER, 0, 3}
             },
             {
                 "bar", 0, 1,
                 (cio_call_t[]) {
-                    {"foo", 0, NULL, &(cio_token_t){CIO_TOKEN_IDENTIFIER, 0, 3}}
+                    {"foo", 0, GEN_NULL, &(cio_token_t){CIO_TOKEN_IDENTIFIER, 0, 3}}
                 },
-                false,
+                gen_false,
                 &(cio_token_t){CIO_TOKEN_IDENTIFIER, 4, 3}
             }
         }
@@ -73,11 +73,11 @@ static gen_error_t* gen_main(void) {
         error = GEN_TESTS_EXPECT(program_expected.routines[0].external, program.routines[0].external);
         if(error) return error;
 
-        bool equal = false;
+        gen_bool_t equal = gen_false;
         error = gen_memory_compare(program_expected.routines[0].token, sizeof(cio_token_t), program.routines[0].token, sizeof(cio_token_t), sizeof(cio_token_t), &equal);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(true, equal);
+        error = GEN_TESTS_EXPECT(gen_true, equal);
         if(error) return error;
     }
 
@@ -100,11 +100,11 @@ static gen_error_t* gen_main(void) {
         error = GEN_TESTS_EXPECT((void*) program_expected.routines[1].calls[0].parameters, program.routines[1].calls[0].parameters);
         if(error) return error;
 
-        bool equal = false;
+        gen_bool_t equal = gen_false;
         error = gen_memory_compare(program_expected.routines[1].calls[0].token, sizeof(cio_token_t), program.routines[1].calls[0].token, sizeof(cio_token_t), sizeof(cio_token_t), &equal);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(true, equal);
+        error = GEN_TESTS_EXPECT(gen_true, equal);
         if(error) return error;
 
         error = GEN_TESTS_EXPECT(program_expected.routines[0].external, program.routines[0].external);
@@ -113,12 +113,12 @@ static gen_error_t* gen_main(void) {
         error = gen_memory_compare(program_expected.routines[1].token, sizeof(cio_token_t), program.routines[1].token, sizeof(cio_token_t), sizeof(cio_token_t), &equal);
         if(error) return error;
 
-        error = GEN_TESTS_EXPECT(true, equal);
+        error = GEN_TESTS_EXPECT(gen_true, equal);
         if(error) return error;
     }
 
     error = cio_program_free(&program);
     if(error) return error;
 
-    return NULL;
+    return GEN_NULL;
 }

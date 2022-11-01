@@ -15,15 +15,15 @@ static void cio_tokenize_internal_cleanup_tokens(cio_token_t** tokens) {
     }
 }
 
-gen_error_t* cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length) {
+gen_error_t* cio_tokenize(const char* const restrict source, const gen_size_t source_length, cio_token_t** const restrict out_tokens, gen_size_t* const restrict out_tokens_length) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) cio_tokenize, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `NULL`");
-	if(!out_tokens) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens` was `NULL`");
-	if(!out_tokens_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens_length` was `NULL`");
+	if(!source) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`source` was `GEN_NULL`");
+	if(!out_tokens) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens` was `GEN_NULL`");
+	if(!out_tokens_length) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`out_tokens_length` was `GEN_NULL`");
 
-	size_t offset = 0;
+	gen_size_t offset = 0;
 	char c = source[offset];
 
     GEN_CLEANUP_FUNCTION(cio_tokenize_internal_cleanup_tokens) cio_token_t* tokens_cleanup = *out_tokens;
@@ -74,7 +74,7 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
 		}
 	} while(offset < source_length);
 
-    tokens_cleanup = NULL;
+    tokens_cleanup = GEN_NULL;
 
-	return NULL;
+	return GEN_NULL;
 }

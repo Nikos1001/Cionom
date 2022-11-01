@@ -11,8 +11,8 @@ static gen_error_t* gen_main(void) {
 	if(error) return error;
 
     const char source[] = "x 1 $cio::__foobar 0 :c1 11 c11:";
-    cio_token_t* tokens = NULL;
-    size_t length = 0;
+    cio_token_t* tokens = GEN_NULL;
+    gen_size_t length = 0;
     error = cio_tokenize(source, sizeof(source) - 1, &tokens, &length);
 	if(error) return error;
 
@@ -31,12 +31,12 @@ static gen_error_t* gen_main(void) {
     error = GEN_TESTS_EXPECT(sizeof(expected) / sizeof(expected[0]), length);
     if(error) return error;
 
-    bool equal = false;
+    gen_bool_t equal = gen_false;
     error = gen_memory_compare(expected, sizeof(expected), tokens, sizeof(expected), sizeof(expected), &equal);
     if(error) return error;
 
-    error = GEN_TESTS_EXPECT(true, equal);
+    error = GEN_TESTS_EXPECT(gen_true, equal);
     if(error) return error;
 
-    return NULL;
+    return GEN_NULL;
 }

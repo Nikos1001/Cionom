@@ -18,14 +18,14 @@ static gen_error_t* gen_main(void) {
 
     {
         const char file[] = "test\nwoooooo\n";
-        size_t line = 0;
+        gen_size_t line = 0;
         error = cio_line_from_offset(5, &line, file, sizeof(file) - 1);
     	if(error) return error;
 
         error = GEN_TESTS_EXPECT(2, line);
     	if(error) return error;
 
-        size_t column = 0;
+        gen_size_t column = 0;
         error = cio_column_from_offset(5, &column, file, sizeof(file) - 1);
     	if(error) return error;
 
@@ -34,11 +34,11 @@ static gen_error_t* gen_main(void) {
     }
 
     {
-        char* mangled = NULL;
+        char* mangled = GEN_NULL;
         error = cio_mangle_identifier("&__+foo@bar", &mangled);     
     	if(error) return error;
 
-        error = GEN_TESTS_EXPECT(false, mangled == NULL);
+        error = GEN_TESTS_EXPECT(gen_false, mangled == GEN_NULL);
     	if(error) return error;
 
         error = GEN_TESTS_EXPECT("__cionom_mangled_grapheme_ampersand____cionom_mangled_grapheme_plusfoo__cionom_mangled_grapheme_atbar", mangled);
@@ -51,7 +51,7 @@ static gen_error_t* gen_main(void) {
         error = gen_dynamic_library_handle_open(external_lib_name, sizeof(external_lib_name) - 1, &handle);
         if(error) return error;
 
-        cio_routine_function_t proc = NULL;
+        cio_routine_function_t proc = GEN_NULL;
         error = cio_resolve_external("copy=", &proc, &handle);
         if(error) return error;
 
@@ -62,5 +62,5 @@ static gen_error_t* gen_main(void) {
         if(error) return error;
     }
 
-    return NULL;
+    return GEN_NULL;
 }
