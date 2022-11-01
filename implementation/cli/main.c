@@ -56,7 +56,8 @@ typedef enum {
     CIO_CLI_SWITCH_VERSION,
     CIO_CLI_SWITCH_FATAL_WARNINGS,
     CIO_CLI_SWITCH_WARNING,
-    CIO_CLI_SWITCH_HELP
+    CIO_CLI_SWITCH_HELP,
+    CIO_CLI_SWITCH_DEBUG_VM
 } cio_cli_switch_t;
 
 static gen_error_t* cio_cli_read_file(const char* path, unsigned char** out_file, size_t* out_size) {
@@ -144,8 +145,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
 
     // TODO: `--demangle-identifier` - Demangle a mangled identifier
 
-    // TODO: `--verbose` - Verbose output
-
     // TODO: `--mapfile` - Redirect exported routine names to be different to their internal names based on a file. Also contains list of files for constant data under `--extension=constants`
 
     // TODO: `--no-extension-encoding` - Treat the reserved encoding `push 0x7F` as a no-op instead of using it as an extension marker and remove all pushed entries preceeding it
@@ -199,7 +198,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_VERSION] = "version",
         [CIO_CLI_SWITCH_FATAL_WARNINGS] = "fatal-warnings",
         [CIO_CLI_SWITCH_WARNING] = "warning",
-        [CIO_CLI_SWITCH_HELP] = "help"
+        [CIO_CLI_SWITCH_HELP] = "help",
+        [CIO_CLI_SWITCH_DEBUG_VM] = "debug-vm"
     };
 
     static const size_t switches_lengths[] = {
@@ -213,7 +213,8 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
         [CIO_CLI_SWITCH_VERSION] = sizeof("version") - 1,
         [CIO_CLI_SWITCH_FATAL_WARNINGS] = sizeof("fatal-warnings") - 1,
         [CIO_CLI_SWITCH_WARNING] = sizeof("warning") - 1,
-        [CIO_CLI_SWITCH_HELP] = sizeof("help") - 1
+        [CIO_CLI_SWITCH_HELP] = sizeof("help") - 1,
+        [CIO_CLI_SWITCH_DEBUG_VM] = sizeof("debug-vm") - 1
     };
 
     gen_arguments_parsed_t parsed = {0};
@@ -228,6 +229,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
     bool warn_implicit_switch_parameter = false;
     bool warn_implicit_file = false;
     cio_warning_settings_t warning_settings = {0};
+    bool debug_vm = false;
 
     cio_cli_operation_t operation = CIO_CLI_OPERATION_NONE;
 
@@ -257,13 +259,12 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` expected a parameter", switches[parsed.long_argument_indices[i]]);
             }
 
-            // TODO: Fix parameter duplication here
             // TODO: Move this out into a more managable structure
 
-            bool all = false;
-            error = gen_string_compare("all", sizeof("all"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &all);
+            bool equal = false;
+            error = gen_string_compare("all", sizeof("all"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(all) {
+            if(equal) {
                 bool fatal_warnings = warning_settings.fatal_warnings;
 
                 error = gen_memory_set(&warning_settings, sizeof(cio_warning_settings_t), true);
@@ -277,31 +278,63 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 continue;
             }
 
-            error = gen_string_compare("implicit_switch_parameter", sizeof("implicit_switch_parameter"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_switch_parameter);
+            error = gen_string_compare("implicit_switch_parameter", sizeof("implicit_switch_parameter"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warn_implicit_switch_parameter) continue;
-            error = gen_string_compare("implicit_switch", sizeof("implicit_switch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_switch);
+            if(equal && warn_implicit_switch_parameter) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_switch_parameter` specified multiple times");
+            if(equal) {
+                warn_implicit_switch_parameter = true;
+                continue;
+            }
+            error = gen_string_compare("implicit_switch", sizeof("implicit_switch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warn_implicit_switch) continue;
-            error = gen_string_compare("implicit_file", sizeof("implicit_file"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warn_implicit_file);
+            if(equal && warn_implicit_switch) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_switch` specified multiple times");
+            if(equal) {
+                warn_implicit_switch = true;
+                continue;
+            }
+            error = gen_string_compare("implicit_file", sizeof("implicit_file"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warn_implicit_file) continue;
+            if(equal && warn_implicit_file) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=warn_implicit_file` specified multiple times");
+            if(equal) {
+                warn_implicit_file = true;
+                continue;
+            }
 
-            error = gen_string_compare("emit_reserved_encoding", sizeof("emit_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.emit_reserved_encoding);
+            error = gen_string_compare("emit_reserved_encoding", sizeof("emit_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warning_settings.emit_reserved_encoding) continue;
-            error = gen_string_compare("reserved_identifier", sizeof("reserved_identifier"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.reserved_identifier);
+            if(equal && warning_settings.emit_reserved_encoding) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=emit_reserved_encoding` specified multiple times");
+            if(equal) {
+                warning_settings.emit_reserved_encoding = true;
+                continue;
+            }
+            error = gen_string_compare("reserved_identifier", sizeof("reserved_identifier"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warning_settings.reserved_identifier) continue;
-            error = gen_string_compare("parameter_overflow", sizeof("parameter_overflow"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.parameter_overflow);
+            if(equal && warning_settings.reserved_identifier) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=reserved_identifier` specified multiple times");
+            if(equal) {
+                warning_settings.reserved_identifier = true;
+                continue;
+            }
+            error = gen_string_compare("parameter_overflow", sizeof("parameter_overflow"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warning_settings.parameter_overflow) continue;
-            error = gen_string_compare("parameter_count_mismatch", sizeof("parameter_count_mismatch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.parameter_count_mismatch);
+            if(equal && warning_settings.parameter_overflow) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=parameter_overflow` specified multiple times");
+            if(equal) {
+                warning_settings.parameter_overflow = true;
+                continue;
+            }
+            error = gen_string_compare("parameter_count_mismatch", sizeof("parameter_count_mismatch"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warning_settings.parameter_count_mismatch) continue;
-            error = gen_string_compare("consume_reserved_encoding", sizeof("consume_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &warning_settings.consume_reserved_encoding);
+            if(equal && warning_settings.parameter_count_mismatch) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=parameter_count_mismatch` specified multiple times");
+            if(equal) {
+                warning_settings.parameter_count_mismatch = true;
+                continue;
+            }
+            error = gen_string_compare("consume_reserved_encoding", sizeof("consume_reserved_encoding"), parsed.long_argument_parameters[i], parsed.long_argument_parameter_lengths[i] + 1, GEN_STRING_NO_BOUNDS, &equal);
             if(error) return error;
-            if(warning_settings.consume_reserved_encoding) continue;
+            if(equal && warning_settings.consume_reserved_encoding) return gen_error_attach_backtrace(GEN_ERROR_TOO_LONG, GEN_LINE_NUMBER, "`--warning=consume_reserved_encoding` specified multiple times");
+            if(equal) {
+                warning_settings.consume_reserved_encoding = true;
+                continue;
+            }
         }
     }
 
@@ -509,6 +542,19 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
                 break;
             }
 
+            case CIO_CLI_SWITCH_DEBUG_VM: {
+                if(parsed.long_argument_parameters[i]) {
+                    error = gen_log_formatted(GEN_LOG_LEVEL_FATAL, "cionom-cli", "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                    if(error) return error;
+
+                    return gen_error_attach_backtrace_formatted(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`--%t` does not take a parameter", switches[parsed.long_argument_indices[i]]);
+                }
+
+                debug_vm = true;
+
+                break;
+            }
+
             default: return gen_error_attach_backtrace(GEN_ERROR_UNKNOWN, GEN_LINE_NUMBER, "Something went wrong while parsing arguments");
         }
     }
@@ -602,7 +648,7 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             if(error) return error;
 
 			cio_vm_t vm = {0};
-			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, false /* TODO: `--debug` */, &warning_settings);
+			error = cio_vm_initialize((unsigned char*) bytecode, bytecode_length, stack_length, true, &vm, debug_vm, &warning_settings);
 			if(error) return error;
 
 			error = cio_vm_push_frame(&vm);
@@ -685,7 +731,6 @@ static gen_error_t* gen_main(const size_t argc, const char* const restrict* cons
             char* cas_file = NULL;
             size_t cas_file_size = 0;
 
-            // TODO: This appears to bork symbol resolution somehow
             for(size_t i = 0; i < bytecode_meta->callables_length; ++i) {
                 if(bytecode_meta->callables[i].offset == CIO_ROUTINE_EXTERNAL) {
                     error = gen_memory_reallocate_zeroed((void**) &cas_file, cas_file_size, cas_file_size + bytecode_meta->callables[i].identifier_length + 9, sizeof(char));

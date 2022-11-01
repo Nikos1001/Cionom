@@ -7,7 +7,6 @@
     - Place version (+magic?) into bytecode modules so VM can verify version <= runtime version
 - Implementation
   - Extension: specify libs to look in for extsyms
-  - Write tests
   - Rewrite documentation
   - Add `~~~~~^` style markers to diagnostic output
   - Decompose header data structure into usable data
