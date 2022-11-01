@@ -289,6 +289,8 @@ typedef struct {
     gen_size_t callables_length;
 } cio_bytecode_t;
 
+typedef gen_error_t*(*cio_extlib_call_wrapper_t)(cio_vm_t* const restrict vm, const cio_routine_function_t call);
+
 /**
  * The VM state.
  */
@@ -336,6 +338,10 @@ typedef struct cio_vm_t {
      * "userpointer"-style storage for the native library.
      */
     void* external_lib_storage;
+    /**
+     * VM call wrapper for the extlib. Should restore stack/frame state before returning.
+     */
+    cio_extlib_call_wrapper_t external_lib_call_wrapper;
 
     gen_bool_t debug_prints;
 

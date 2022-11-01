@@ -22,6 +22,7 @@
   - Debugger
     - Breakponts
     - Debug info
+      - Cíonom backtraces vs. Genstone backtraces
     - Disassembly
   - Write some tutorials
   - Document debug info format
@@ -34,3 +35,5 @@
   - Review buffer bounding negligence (e.g. ignoring `source_file_length`)
   - "try-catch" esque. mechanism for catching Genstone errors in Cíonom
     - Update the catch divide-by-zero example
+  - Signals/SEH for genthreads
+    - Apply to extlib exception handlers

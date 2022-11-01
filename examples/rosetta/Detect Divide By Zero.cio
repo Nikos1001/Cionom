@@ -1,5 +1,15 @@
 / 2
 copy= 2
+printc* 1
+printnv 1
+! 0
+
+__cionom_extlib_default_exception_handler 2
+:
+    printnv 0
+    printc* 1
+    !
+:
 
 __cionom_entrypoint 0
 :

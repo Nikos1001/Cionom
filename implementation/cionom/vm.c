@@ -30,9 +30,14 @@ gen_error_t* cio_vm_pop_frame(cio_vm_t* const restrict vm) {
 
 	if(!vm->frames_used) return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Attemping to pop when no stack frames are active");
 
-    vm->frames[vm->frames_used - 1].base = 0;
-    vm->frames[vm->frames_used - 1].height = 0;
-    vm->frames[vm->frames_used - 1].execution_offset = 0;
+    cio_frame_t* frame = &vm->frames[vm->frames_used - 1];
+
+    error = gen_memory_set(&vm->stack[frame->base], frame->height * sizeof(gen_size_t), 0);
+	if(error) return error;
+
+    frame->base = 0;
+    frame->height = 0;
+    frame->execution_offset = 0;
 	--vm->frames_used;
 
 	return GEN_NULL;
@@ -48,7 +53,7 @@ gen_error_t* cio_vm_push(cio_vm_t* const restrict vm) {
 	if(vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height < vm->stack_length)
 		++vm->frames[vm->frames_used - 1].height;
 	else
-		return gen_error_attach_backtrace(GEN_ERROR_BAD_OPERATION, GEN_LINE_NUMBER, "Stack overflow");
+		return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_SPACE, GEN_LINE_NUMBER, "Stack overflow");
 	vm->stack[vm->frames[vm->frames_used - 1].base + vm->frames[vm->frames_used - 1].height - 1] = 0;
 
 	return GEN_NULL;
@@ -185,13 +190,19 @@ gen_error_t* cio_vm_dispatch_callable(cio_vm_t* const restrict vm, const cio_cal
     gen_size_t old_bytecode = vm->current_bytecode;
     vm->current_bytecode = callable->bytecode_index;
 
-    if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable_remote_index, (void*) vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
+    if(vm->debug_prints) gen_log_formatted(GEN_LOG_LEVEL_DEBUG, "cionom", "Calling %t routine %t %uz (@%p) in BC %uz @ %uz", vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function == cio_vm_internal_execute_routine ? "cionom" : "external", callable->identifier, callable_remote_index, (void*) vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function, vm->current_bytecode, vm->frames[vm->frames_used - 1].execution_offset);
 
     if(callable_remote_index >= vm->bytecode[vm->current_bytecode].callables_length) return gen_error_attach_backtrace(GEN_ERROR_OUT_OF_BOUNDS, GEN_LINE_NUMBER, "The index of the callable in remote module was greater than the remote module's callables length");
 
 	// Dispatch call
-	error = vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function(vm);
-    if(error) return error;
+    if(vm->external_lib_call_wrapper) {
+        error = vm->external_lib_call_wrapper(vm, vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function);
+        if(error) return error;
+    }
+    else {
+        error = vm->bytecode[vm->current_bytecode].callables[callable_remote_index].function(vm);
+        if(error) return error;
+    }
 
     vm->current_bytecode = old_bytecode;
 
@@ -295,7 +306,10 @@ gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, con
     if(error) return error;
 
     cio_routine_function_t onload = GEN_NULL;
-    error = gen_dynamic_library_handle_get_symbol(&out_instance->external_lib, "__cionom_extlib_onload", sizeof("__cionom_extlib_onload") - 1, (void**) &onload);
+    error = gen_dynamic_library_handle_get_symbol(&out_instance->external_lib, "__cionom_extlib_on_load", sizeof("__cionom_extlib_on_load") - 1, (void**) &onload);
+    if(error && error->type != GEN_ERROR_NO_SUCH_OBJECT) return error;
+
+    error = gen_dynamic_library_handle_get_symbol(&out_instance->external_lib, "__cionom_extlib_wrap_call", sizeof("__cionom_extlib_wrap_call") - 1, (void**) &out_instance->external_lib_call_wrapper);
     if(error && error->type != GEN_ERROR_NO_SUCH_OBJECT) return error;
 
     for(gen_size_t i = 0; i < bytecode_length; ++i) {
