@@ -14,14 +14,14 @@ gen_error_t* __cionom_mangled_grapheme_plus(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) __cionom_mangled_grapheme_plus, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `GEN_NULL`");
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
 	caller[caller_frame->height - 1] = caller[current[0]] + caller[current[1]];
 
-	return NULL;
+	return GEN_NULL;
 }
 
 //* `-` - Subtract a number from another.
@@ -32,14 +32,14 @@ gen_error_t* __cionom_mangled_grapheme_minus(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) __cionom_mangled_grapheme_minus, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `GEN_NULL`");
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
 	caller[caller_frame->height - 1] = caller[current[0]] - caller[current[1]];
 
-	return NULL;
+	return GEN_NULL;
 }
 
 //* `*` - Multiplies two numbers.
@@ -50,14 +50,14 @@ gen_error_t* __cionom_mangled_grapheme_asterisk(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) __cionom_mangled_grapheme_asterisk, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `GEN_NULL`");
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
 
 	caller[caller_frame->height - 1] = caller[current[0]] * caller[current[1]];
 
-	return NULL;
+	return GEN_NULL;
 }
 
 //* `/` - Divide a number by another.
@@ -68,7 +68,7 @@ gen_error_t* __cionom_mangled_grapheme_slash(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) __cionom_mangled_grapheme_slash, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `GEN_NULL`");
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
@@ -76,7 +76,7 @@ gen_error_t* __cionom_mangled_grapheme_slash(cio_vm_t* const restrict vm) {
 	if(caller[current[1]] == 0) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Division by zero");
 	caller[caller_frame->height - 1] = caller[current[0]] / caller[current[1]];
 
-	return NULL;
+	return GEN_NULL;
 }
 
 //* `%` - Divide a number by another, returning the remainder.
@@ -87,7 +87,7 @@ gen_error_t* __cionom_mangled_grapheme_percentage(cio_vm_t* const restrict vm) {
 	GEN_TOOLING_AUTO gen_error_t* error = gen_tooling_push(GEN_FUNCTION_NAME, (void*) __cionom_mangled_grapheme_percentage, GEN_FILE_NAME);
 	if(error) return error;
 
-	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `NULL`");
+	if(!vm) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "`vm` was `GEN_NULL`");
 
 	CIO_EXTLIB_GET_FRAME_EHD(vm, current, 0);
 	CIO_EXTLIB_GET_FRAME_EHD(vm, caller, 1);
@@ -95,7 +95,7 @@ gen_error_t* __cionom_mangled_grapheme_percentage(cio_vm_t* const restrict vm) {
 	if(caller[current[1]] == 0) return gen_error_attach_backtrace(GEN_ERROR_INVALID_PARAMETER, GEN_LINE_NUMBER, "Division by zero");
 	caller[caller_frame->height - 1] = caller[current[0]] % caller[current[1]];
 
-	return NULL;
+	return GEN_NULL;
 }
 
 CIO_EXTLIB_END_DEFS

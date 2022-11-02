@@ -17,57 +17,57 @@ typedef struct {
     /**
      * Treat warnings as fatal errors.
      */
-    bool fatal_warnings;
+    gen_bool_t fatal_warnings;
 
     /**
      * Warn for calls which result in the reserved encoding `push 0x7F`.
      */
-    bool emit_reserved_encoding;
+    gen_bool_t emit_reserved_encoding;
     /**
      * Warn for declaring routines which contain `__cionom` in their identifier.
      */
-    bool reserved_identifier;
+    gen_bool_t reserved_identifier;
     /**
      * Warn for calls which provide a literal greater than the maximum encodable value `0x7E`.
      */
-    bool parameter_overflow;
+    gen_bool_t parameter_overflow;
     /**
      * Warn for bytecode which contains extensions in its header.
      */
-    bool header_extension;
+    gen_bool_t header_extension;
     /**
      * Warn for bytecode which contains extensions during execution.
      */
-    bool bytecode_extension;
+    gen_bool_t bytecode_extension;
     /**
      * Warn for calls which provide more parameters than the declaration/definition specifies.
      */
-    bool parameter_count_mismatch;
+    gen_bool_t parameter_count_mismatch;
     /**
      * Warn for bytecode which makes use of extensions not denoted in the header.
      */
-    bool unmarked_extension;
+    gen_bool_t unmarked_extension;
     /**
      * Warn for bytecode which denotes an extension multiple times in the header where doing so has no effect.
      */
-    bool duplicate_extension;
+    gen_bool_t duplicate_extension;
     /**
      * Warn for consumption of the reserved encoding `push 0x7F`.
      */
-    bool consume_reserved_encoding;
+    gen_bool_t consume_reserved_encoding;
     /**
      * Warn for routines which are both declared and defined in the same file.
      */
-    bool routine_declared_defined;
+    gen_bool_t routine_declared_defined;
 } cio_warning_settings_t;
 
 typedef struct {
-    bool elide_reserve_space;
-    bool constants;
-    bool nil_calls;
-    bool breakpoints;
-    bool debug_info;
-    bool encode_stack_length;
+    gen_bool_t elide_reserve_space;
+    gen_bool_t constants;
+    gen_bool_t nil_calls;
+    gen_bool_t breakpoints;
+    gen_bool_t debug_info;
+    gen_bool_t encode_stack_length;
 } cio_extension_settings_t;
 
 /**
@@ -100,11 +100,11 @@ typedef struct {
      * The offset into the source buffer at which this token begins.
      * This value is intended to be an offset into the source buffer provided to `cio_emit_bytecode`.
      */
-    size_t offset;
+    gen_size_t offset;
     /**
      * The number of characters in the source which this token occupies.
      */
-    size_t length;
+    gen_size_t length;
 } cio_token_t;
 
 /**
@@ -118,11 +118,11 @@ typedef struct {
     /**
      * The number of parameters to this call.
      */
-    size_t parameters_length;
+    gen_size_t parameters_length;
     /**
      * The parameters to this call - a list of numeric constants.
      */
-    size_t* parameters;
+    gen_size_t* parameters;
 
     /**
      * The token this call was constructed from.
@@ -142,11 +142,11 @@ typedef struct {
     /**
      * The number of parameters to the routine.
      */
-    size_t parameters;
+    gen_size_t parameters;
     /**
      * The length of the routine's body
      */
-    size_t calls_length;
+    gen_size_t calls_length;
     /**
      * The routine's body.
      */
@@ -154,7 +154,7 @@ typedef struct {
     /**
      * Whether this routine should be resolved externally
      */
-    bool external;
+    gen_bool_t external;
 
     /**
      * The token this routine was constructed from.
@@ -170,7 +170,7 @@ typedef struct {
     /**
      * The number of routines in the program.
      */
-    size_t routines_length;
+    gen_size_t routines_length;
     /**
      * The program's routines.
      */
@@ -191,15 +191,15 @@ typedef struct {
     /**
      * The offset of the call frame.
      */
-    size_t base;
+    gen_size_t base;
     /**
      * The height of the call frame.
      */
-    size_t height;
+    gen_size_t height;
     /**
      * The current point of execution in the bytecode for the call frame.
      */
-    size_t execution_offset;
+    gen_size_t execution_offset;
 } cio_frame_t;
 
 typedef struct {
@@ -210,7 +210,7 @@ typedef struct {
     /**
      * The length of the identifier of this callable.
      */
-    size_t identifier_length;
+    gen_size_t identifier_length;
     /**
      * The underlying function to call for this callable.
      */
@@ -218,15 +218,15 @@ typedef struct {
     /**
      * The index of the bytecode module this callable originates from.
      */
-    size_t bytecode_index;
+    gen_size_t bytecode_index;
     /**
      * The offset into the bytecode buffer this callable begins at.
      */
-    size_t offset;
+    gen_size_t offset;
     /**
      * The index of this callable.
      */
-    size_t routine_index;
+    gen_size_t routine_index;
 } cio_callable_t;
 
 typedef struct {
@@ -247,17 +247,17 @@ typedef struct {
     union {
         struct {} elide_reserve_space;
         struct {
-            size_t size;
-            uint8_t* data;
+            gen_size_t size;
+            gen_uint8_t* data;
         } constants;
         struct {
-            size_t nil_call_index;
-            size_t nil_call_frame_index;
+            gen_size_t nil_call_index;
+            gen_size_t nil_call_frame_index;
         } nil_calls;
         struct {} breakpoints;
         cio_module_debug_info_t debug_info;
         struct {
-            size_t length;
+            gen_size_t length;
         } encode_stack_length;
     };
 } cio_extension_data_t;
@@ -268,7 +268,7 @@ typedef struct {
 typedef struct {
     cio_extension_settings_t extension_settings;
     cio_extension_data_t* extensions;
-    size_t extensions_length;
+    gen_size_t extensions_length;
 
     /**
      * The bytecode data to execute.
@@ -277,7 +277,7 @@ typedef struct {
     /**
      * The size of the bytecode data.
      */
-    size_t size;
+    gen_size_t size;
 
     /**
      * The callable routines for this module.
@@ -286,8 +286,10 @@ typedef struct {
     /**
      * The number of callable routines for this module.
      */
-    size_t callables_length;
+    gen_size_t callables_length;
 } cio_bytecode_t;
+
+typedef gen_error_t*(*cio_extlib_call_wrapper_t)(cio_vm_t* const restrict vm, const cio_routine_function_t call);
 
 /**
  * The VM state.
@@ -296,20 +298,20 @@ typedef struct cio_vm_t {
     /**
      * The length of the stack.
      */
-    size_t stack_length;
+    gen_size_t stack_length;
     /**
-     * The stack - consists of a buffer of `size_t`s.
+     * The stack - consists of a buffer of `gen_size_t`s.
      */
-    size_t* stack;
+    gen_size_t* stack;
 
     /**
      * The number of call frames currently in use.
      */
-    size_t frames_used;
+    gen_size_t frames_used;
     /**
      * The number of call frames available to use.
      */
-    size_t frames_length;
+    gen_size_t frames_length;
     /**
      * The call frames.
      */
@@ -322,16 +324,26 @@ typedef struct cio_vm_t {
     /**
      * The number of bytecode data bundles to execute.
      */
-    size_t bytecode_length;
+    gen_size_t bytecode_length;
     /**
      * The current bytecode data bundle being executed.
      */
-    size_t current_bytecode;
+    gen_size_t current_bytecode;
 
     /**
      * The library handle from which to load externally resolved routines.
      */
     gen_dynamic_library_handle_t external_lib;
+    /**
+     * "userpointer"-style storage for the native library.
+     */
+    void* external_lib_storage;
+    /**
+     * VM call wrapper for the extlib. Should restore stack/frame state before returning.
+     */
+    cio_extlib_call_wrapper_t external_lib_call_wrapper;
+
+    gen_bool_t debug_prints;
 
     const cio_warning_settings_t* warning_settings;
 } cio_vm_t;
@@ -349,7 +361,7 @@ typedef struct GEN_PACKED {
      * The offset of this routine into the code section.
      * Will be `CIO_ROUTINE_EXTERNAL` for external routines.
      */
-    uint32_t offset;
+    gen_uint32_t offset;
 
     /**
      * The name of this routine as a C-string.
@@ -365,18 +377,18 @@ typedef struct {
     /**
      * The length of the routine table.
      */
-    uint8_t routine_table_length : 7;
+    gen_uint8_t routine_table_length : 7;
 
     /**
      * Implementation-reserved bit.
      */
-    uint8_t reserved : 1;
+    gen_uint8_t reserved : 1;
 
     /**
      * The routine table.
      * This represents an array of `cio_routine_table_entry_t`.
      */
-    uint8_t routine_table[];
+    gen_uint8_t routine_table[];
 } cio_header_t;
 
 /**
@@ -391,7 +403,7 @@ typedef struct GEN_PACKED {
     /**
      * The operand to the instruction.
      */
-    uint8_t operand : 7;
+    gen_uint8_t operand : 7;
     /**
      * The opcode of the instruction.
      */
@@ -409,33 +421,33 @@ typedef struct GEN_PACKED {
  * @param[out] out_line a pointer to storage for the line number.
  * @param[in] source the source buffer.
  * @param[in] source_length the length of the source buffer.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_line_from_offset(const size_t offset, size_t* const restrict out_line, const char* const restrict source, const size_t source_length);
+extern gen_error_t* cio_line_from_offset(const gen_size_t offset, gen_size_t* const restrict out_line, const char* const restrict source, const gen_size_t source_length);
 /**
  * Gets the column from an offset into a source buffer.
  * @param[in] offset the offset to get column from.
  * @param[out] out_column a pointer to storage for the column.
  * @param[in] source the source buffer.
  * @param[in] source_length the length of the source buffer.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_column_from_offset(const size_t offset, size_t* const restrict out_column, const char* const restrict source, const size_t source_length);
+extern gen_error_t* cio_column_from_offset(const gen_size_t offset, gen_size_t* const restrict out_column, const char* const restrict source, const gen_size_t source_length);
 /**
  * Mangles an identifier to contain only `A-Za-z0-9_`
  * @param[in] identifier the identifier to mangle.
  * @param[out] out_mangled a pointer to storage for a pointer to the mangled identifier buffer. Must be freed.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled);
+extern gen_error_t* cio_mangle_identifier(const char* const restrict identifier, char** const restrict out_mangled);
 /**
  * Resolves an external routine identifier to native code.
  * @param[in] identifier the identifier to resolve.
  * @param[out] out_function a pointer to storage for the underlying function.
  * @param[in] lib the library to resolve the identifier from.
- * @return An error, otherwise `NULL`. 
+ * @return An error, otherwise `GEN_NULL`. 
  */
-gen_error_t* cio_resolve_external(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dynamic_library_handle_t* const restrict lib);
+extern gen_error_t* cio_resolve_external(const char* const restrict identifier, cio_routine_function_t* const out_function, const gen_dynamic_library_handle_t* const restrict lib);
 
 /**
  * Generates a token buffer from a source buffer.
@@ -443,9 +455,9 @@ gen_error_t* cio_resolve_external(const char* const restrict identifier, cio_rou
  * @param[in] source_length the length of the source buffer to tokenize.
  * @param[out] out_tokens a pointer to storage for a pointer to the token buffer. Must be freed.
  * @param[out] out_tokens_length a pointer to storage for the length of the token buffer.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_tokenize(const char* const restrict source, const size_t source_length, cio_token_t** const restrict out_tokens, size_t* const restrict out_tokens_length);
+extern gen_error_t* cio_tokenize(const char* const restrict source, const gen_size_t source_length, cio_token_t** const restrict out_tokens, gen_size_t* const restrict out_tokens_length);
 
 /**
  * Parses a token buffer into a program representation.
@@ -456,16 +468,16 @@ gen_error_t* cio_tokenize(const char* const restrict source, const size_t source
  * @param[in] source_length the length of the source buffer from which the token buffer was tokenized.
  * @param[in] source_file file name from which the source buffer was read.
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
+extern gen_error_t* cio_parse(const cio_token_t* const restrict tokens, const gen_size_t tokens_length, cio_program_t* const restrict out_program, const char* const restrict source, const gen_size_t source_length, const char* const restrict source_file, const gen_size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
 /**
  * Properly cleans up and frees the contents of a program representation.
  * Does not free the program representation container itself as allocation is done by the user.
  * @param[in,out] program the program to free.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_program_free(cio_program_t* const restrict program);
+extern gen_error_t* cio_program_free(cio_program_t* const restrict program);
 
 /**
  * Emits executable bytecode for a program representation.
@@ -476,11 +488,9 @@ gen_error_t* cio_program_free(cio_program_t* const restrict program);
  * @param[in] source_length the length of the source buffer from which the program representation was derived.
  * @param[in] source_file file name from which the source buffer was read.
  * @param[in] source_file_length the length of the file name from which the source buffer was read.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, size_t* const restrict out_bytecode_length, const char* const restrict source, const size_t source_length, const char* const restrict source_file, const size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
-
-gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
+extern gen_error_t* cio_module_emit(const cio_program_t* const restrict program, unsigned char** const restrict out_bytecode, gen_size_t* const restrict out_bytecode_length, const char* const restrict source, const gen_size_t source_length, const char* const restrict source_file, const gen_size_t source_file_length, const cio_warning_settings_t* const restrict warning_settings);
 
 /**
  * Gets a callable from an identifier in a VM.
@@ -489,7 +499,7 @@ gen_error_t* cio_vm_internal_execute_routine(cio_vm_t* const restrict vm);
  * @param out_callable pointer to storage for a pointer to the retrieved callable.
  * @return gen_error_t* 
  */
-gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable);
+extern gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* identifier, cio_callable_t* restrict * const restrict out_callable, gen_bool_t vminit);
 
 /**
  * Creates and initializes a VM to execute a bytecode module or bundled executable.
@@ -497,65 +507,68 @@ gen_error_t* cio_vm_get_identifier(cio_vm_t* const restrict vm, const char* iden
  * @param[in] bytecode_length the length of `bytecode`.
  * @param[in] stack_length the length of the stack to execute with.
  * @param[out] out_instance a pointer to storage for the created VM.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const size_t bytecode_length, const size_t stack_length, bool resolve_externals, cio_vm_t* const restrict out_instance, const cio_warning_settings_t* const restrict warning_settings);
+extern gen_error_t* cio_vm_initialize(const unsigned char* const restrict bytecode, const gen_size_t bytecode_length, const gen_size_t stack_length, gen_bool_t resolve_externals, cio_vm_t* const restrict out_instance, gen_bool_t debug_prints, const cio_warning_settings_t* const restrict warning_settings);
 
 /**
  * Destroys a VM.
  * @param[in,out] instance the VM instance to destroy.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_free(cio_vm_t* const restrict instance);
+extern gen_error_t* cio_vm_free(cio_vm_t* const restrict instance);
 
 /**
  * Dispatches a call to a callable in a VM.
  * @param[in,out] vm the VM to call in.
- * @param[in] callable the index of the callable to call.
- * @param[in] argc the number of unframed stack elements to take when constructing the callee stack frame.
- * @return An error, otherwise `NULL`. 
+ * @param[in] callable the callable to call.
+ * @param[in] argc the number of unframed (orphaned) stack elements to take when constructing the callee stack frame.
+ * @return An error, otherwise `GEN_NULL`. 
  */
-gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const size_t callable, const size_t argc);
+extern gen_error_t* cio_vm_dispatch_callable(cio_vm_t* const restrict vm, const cio_callable_t* callable, const gen_size_t argc);
+
+/**
+ * Dispatches a call to a routine index in a VM.
+ * @param[in,out] vm the VM to call in.
+ * @param[in] callable the index of the routine to call.
+ * @param[in] argc the number of unframed (orphaned) stack elements to take when constructing the callee stack frame.
+ * @return An error, otherwise `GEN_NULL`. 
+ */
+extern gen_error_t* cio_vm_dispatch_call(cio_vm_t* const restrict vm, const gen_size_t callable, const gen_size_t argc);
 
 /**
  * Pushes a new stack frame in a VM.
  * @param[in,out] vm the VM to push a new stack frame in.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm);
+extern gen_error_t* cio_vm_push_frame(cio_vm_t* const restrict vm);
 /**
  * Pops the last stack frame in a VM.
  * @param[in,out] vm the VM to pop a stack frame from.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_pop_frame(cio_vm_t* const restrict vm);
+extern gen_error_t* cio_vm_pop_frame(cio_vm_t* const restrict vm);
 /**
  * Pushes a value into the last stack frame in a VM.
  * @param[in,out] vm the VM to push a value into the last frame of.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_push(cio_vm_t* const restrict vm);
+extern gen_error_t* cio_vm_push(cio_vm_t* const restrict vm);
 /**
  * Gets a stack frame.
  * @param[in] vm the VM containing the stack frame.
  * @param[in] frame_offset the offset of the stack frame to get back from the current stack frame.
  * @param[out] out_pointer pointer to storage for a pointer to the stack frame.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const size_t frame_offset, const cio_frame_t** const restrict out_pointer);
+extern gen_error_t* cio_vm_get_frame(const cio_vm_t* const restrict vm, const gen_size_t frame_offset, cio_frame_t** const restrict out_pointer);
 /**
  * Gets a pointer into the stack for a stack frame.
  * @param[in] vm the VM containing the stack.
  * @param[in] frame the stack frame to get a pointer for.
  * @param[out] out_pointer pointer to storage for a pointer to the beginning of the stack frame within the stack.
- * @return An error, otherwise `NULL`.
+ * @return An error, otherwise `GEN_NULL`.
  */
-gen_error_t* cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, size_t** const restrict out_pointer);
-/**
- * Dumps the stack state of a VM for diagnostic purposes.
- * @param[in] vm the VM whose stack should be dumped.
- * @return An error, otherwise `NULL`.
- */
-gen_error_t* cio_vm_dump_stack(const cio_vm_t* const restrict vm);
+extern gen_error_t* cio_vm_get_frame_pointer(const cio_vm_t* const restrict vm, const cio_frame_t* const restrict frame, gen_size_t** const restrict out_pointer);
 
 #endif
